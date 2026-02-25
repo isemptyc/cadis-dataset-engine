@@ -39,9 +39,11 @@ To reproduce a dataset release:
 Example:
 
 ```bash
-git clone https://github.com/<org>/cadis-dataset-engine.git
+git clone https://github.com/isemptyc/cadis-dataset-engine.git
 cd cadis-dataset-engine
-git checkout <engine_commit>
+
+# Checkout the engine commit specified in the dataset release manifest
+git checkout <commit_sha>
 
 docker build -t cadis-engine .
 docker run --rm \
