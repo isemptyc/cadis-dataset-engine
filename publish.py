@@ -44,8 +44,10 @@ def load_manifest(path: Path) -> dict:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("dataset_release_manifest.json must be a JSON object")
-    if raw.get("profile") != "cadis_dataset_release":
-        raise ValueError("unsupported manifest profile; expected cadis_dataset_release")
+    if raw.get("profile") not in {"cadis_dataset_release", "cadis.dataset.release"}:
+        raise ValueError(
+            "unsupported manifest profile; expected cadis_dataset_release or cadis.dataset.release"
+        )
     return raw
 
 
@@ -109,7 +111,7 @@ def main() -> int:
     manifest = ensure_package_dir(package_dir)
     country_iso = str(manifest.get("country_iso", "")).strip().upper()
     dataset_id = str(manifest.get("dataset_id", "")).strip()
-    version = str(manifest.get("version", "")).strip()
+    version = str(manifest.get("dataset_version") or manifest.get("version") or "").strip()
     if not country_iso or not dataset_id or not version:
         raise ValueError("manifest must include country_iso, dataset_id, version")
 
@@ -134,4 +136,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

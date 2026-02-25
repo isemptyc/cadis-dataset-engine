@@ -24,20 +24,42 @@ def read_manifest(path: Path) -> dict:
     return raw
 
 
+def _manifest_files_map(manifest: dict) -> dict:
+    schema_version = manifest.get("schema_version")
+    if schema_version == 2:
+        checksums = manifest.get("checksums")
+        if not isinstance(checksums, dict):
+            raise ValueError("schema v2 manifest missing checksums object")
+        files = checksums.get("files")
+        if not isinstance(files, dict) or not files:
+            raise ValueError("schema v2 manifest checksums.files must be a non-empty object")
+        return files
+
+    files = manifest.get("files")
+    if not isinstance(files, dict) or not files:
+        raise ValueError("manifest files must be a non-empty object")
+    return files
+
+
 def validate_release_dir(release_dir: Path) -> dict:
     manifest_path = release_dir / "dataset_release_manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"missing manifest: {manifest_path}")
 
     manifest = read_manifest(manifest_path)
-    if manifest.get("profile") != "cadis_dataset_release":
-        raise ValueError("unsupported manifest profile; expected cadis_dataset_release")
-    if manifest.get("manifest_version") not in {"1.0", "1.1"}:
+    profile = manifest.get("profile")
+    if profile not in {"cadis_dataset_release", "cadis.dataset.release"}:
+        raise ValueError(
+            "unsupported manifest profile; expected cadis_dataset_release or cadis.dataset.release"
+        )
+    schema_version = manifest.get("schema_version")
+    manifest_version = manifest.get("manifest_version")
+    if schema_version is not None and schema_version != 2:
+        raise ValueError("unsupported schema_version; expected 2")
+    if schema_version is None and manifest_version not in {"1.0", "1.1"}:
         raise ValueError("unsupported manifest_version; expected 1.0 or 1.1")
 
-    files = manifest.get("files")
-    if not isinstance(files, dict) or not files:
-        raise ValueError("manifest files must be a non-empty object")
+    files = _manifest_files_map(manifest)
 
     for rel, meta in sorted(files.items()):
         if not isinstance(meta, dict):
@@ -62,13 +84,14 @@ def validate_release_dir(release_dir: Path) -> dict:
                 f"size mismatch for {rel}: expected={expected_size} actual={actual_size}"
             )
 
-    runtime_policy_sha = str(manifest.get("runtime_policy_checksum", "")).strip()
-    runtime_policy_meta = files.get("runtime_policy.json") or {}
-    runtime_policy_meta_sha = str(runtime_policy_meta.get("sha256", "")).strip()
-    if runtime_policy_sha and runtime_policy_meta_sha and runtime_policy_sha != runtime_policy_meta_sha:
-        raise ValueError(
-            "runtime_policy_checksum must equal files['runtime_policy.json'].sha256"
-        )
+    if schema_version is None:
+        runtime_policy_sha = str(manifest.get("runtime_policy_checksum", "")).strip()
+        runtime_policy_meta = files.get("runtime_policy.json") or {}
+        runtime_policy_meta_sha = str(runtime_policy_meta.get("sha256", "")).strip()
+        if runtime_policy_sha and runtime_policy_meta_sha and runtime_policy_sha != runtime_policy_meta_sha:
+            raise ValueError(
+                "runtime_policy_checksum must equal files['runtime_policy.json'].sha256"
+            )
 
     return manifest
 
@@ -145,7 +168,7 @@ def main() -> int:
         "release_dir": str(release_dir),
         "output_dir": str(out_dir),
         "dataset_id": manifest.get("dataset_id"),
-        "version": manifest.get("version"),
+        "version": manifest.get("dataset_version") or manifest.get("version"),
         "manifest_sha256": manifest_digest,
         "package_sha256": package_digest,
     }
@@ -155,4 +178,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

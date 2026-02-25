@@ -50,9 +50,18 @@ def main() -> int:
         raise FileNotFoundError(f"release manifest not found: {manifest_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    files = manifest.get("files")
-    if not isinstance(files, dict) or not files:
-        raise ValueError("release manifest files must be a non-empty object")
+    schema_version = manifest.get("schema_version")
+    if schema_version == 2:
+        checksums = manifest.get("checksums")
+        if not isinstance(checksums, dict):
+            raise ValueError("schema v2 release manifest missing checksums object")
+        files = checksums.get("files")
+        if not isinstance(files, dict) or not files:
+            raise ValueError("schema v2 release manifest checksums.files must be a non-empty object")
+    else:
+        files = manifest.get("files")
+        if not isinstance(files, dict) or not files:
+            raise ValueError("release manifest files must be a non-empty object")
 
     errors: list[str] = []
     checked = 0

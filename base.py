@@ -30,9 +30,9 @@ class DatasetBuildEngineBase(ABC):
     COUNTRY_NAME: str
 
     # -------- internal state (populated at init) --------
-    DATASET_BUILD_MANIFEST_VERSION = "1.0"
-    DATASET_BUILD_MANIFEST_PROFILE = "cadis_engine_dataset_build"
-    DATASET_BUILD_MANIFEST_FILENAME = "dataset_build_manifest.json"
+    BUILD_MANIFEST_SCHEMA_VERSION = 2
+    BUILD_MANIFEST_PROFILE = "cadis.dataset.build"
+    BUILD_MANIFEST_FILENAME = "dataset_build_manifest.json"
     RUNTIME_POLICY_FILENAME = "runtime_policy.json"
 
     # ==================================================
@@ -163,7 +163,7 @@ class DatasetBuildEngineBase(ABC):
         return out
 
     def _dataset_build_manifest_path(self) -> Path:
-        return self._work_dir / self.DATASET_BUILD_MANIFEST_FILENAME
+        return self._work_dir / self.BUILD_MANIFEST_FILENAME
 
     def _dataset_build_manifest_dataset_id(self) -> str:
         return f"engine.{self.COUNTRY_ISO.lower()}_admin"
@@ -193,18 +193,18 @@ class DatasetBuildEngineBase(ABC):
             }
 
         payload = {
-            "manifest_version": self.DATASET_BUILD_MANIFEST_VERSION,
-            "profile": self.DATASET_BUILD_MANIFEST_PROFILE,
+            "schema_version": self.BUILD_MANIFEST_SCHEMA_VERSION,
+            "profile": self.BUILD_MANIFEST_PROFILE,
             "dataset_id": self._dataset_build_manifest_dataset_id(),
             "dataset_type": "engine",
             "engine": self.ENGINE,
             "engine_iso2": self.COUNTRY_ISO,
             "country_name": self.COUNTRY_NAME,
-            "build_version": self.VERSION,
+            "engine_logic_version": self.VERSION,
             "work_dir": str(self._work_dir.resolve()),
             "release_files": release_files,
             "files": files_meta,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         }
         out = self._dataset_build_manifest_path()
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

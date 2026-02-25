@@ -32,7 +32,7 @@ To reproduce a dataset release:
 1. Obtain the corresponding OpenStreetMap extract.
 2. Clone this repository.
 3. Checkout the engine commit referenced in the dataset release manifest.
-4. Build the Docker image.
+4. Prepare Docker image (pull published image or build locally).
 5. Run the build command with the specified country and dataset version.
 6. Verify output checksums against the published release manifest.
 
@@ -45,11 +45,19 @@ cd cadis-dataset-engine
 # Checkout the engine commit specified in the dataset release manifest
 git checkout <commit_sha>
 
+# Option A: pull published image
+docker pull ghcr.io/isemptyc/cadis-dataset-engine:2026-02
+
+# Option B: build locally from checked-out source
 docker build -t cadis-engine .
+
+# Use either image:
+# - ghcr.io/isemptyc/cadis-dataset-engine:2026-02
+# - cadis-engine
 docker run --rm \
   -v /path/to/osm:/data/osm:ro \
   -v /path/to/output:/data/out \
-  cadis-engine \
+  ghcr.io/isemptyc/cadis-dataset-engine:2026-02 \
   --country tw \
   --version 1.0.0 \
   --osm /data/osm/taiwan.osm.pbf \
