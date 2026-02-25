@@ -62,10 +62,10 @@ Therefore:
 - Hierarchy data represents *administrative knowledge*
 
 Hierarchy data MUST NOT be used to invalidate or discard polygon evidence
-during lookup. It may only be used to supplement, interpret, or evaluate
+during runtime interpretation. It may only be used to supplement, interpret, or evaluate
 semantic completeness at a later stage.
 
-Any lookup engine that assumes polygon OSM IDs and hierarchy OSM IDs are
+Any runtime engine that assumes polygon OSM IDs and hierarchy OSM IDs are
 globally consistent is making an invalid assumption, particularly for regions
 such as Taiwan.
 

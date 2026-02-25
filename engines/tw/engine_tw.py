@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 import shutil
 
-from base import LookupSystemBase
+from base import DatasetBuildEngineBase
 from dataset import (
     AdminLevelPolicy,
     AdminProfile,
@@ -18,15 +18,14 @@ from ffsf.semantic_dataset_exporter import (
 )
 
 """
-TaiwanAdminLookup
-├── SpatialGate            (country bbox + geometry)
-├── PolygonEvidence        (level → polygons)
-├── HierarchyKnowledge     (admin_tree.txt → parent truth)
-├── SemanticCorrection     (Level 4 via admin_tree when polygons fail)
-└── CanonicalProjection    (rank-based output + status)
+TaiwanAdminDatasetBuild
+├── Polygon extraction dataset (taiwan_admin.json)
+├── Hierarchy text rendering   (admin_tree.txt)
+├── Geometry runtime layer     (geometry.ffsf + geometry_meta.json)
+└── Runtime hierarchy layer    (hierarchy.json)
 """
 
-DEFAULT_WORK_DIR = Path.home() / ".cache" / "admin_lookup" / "taiwan"
+DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "taiwan"
 
 # ==================================================
 # Admin Profile (Taiwan)
@@ -58,10 +57,10 @@ TW_PROFILE = AdminProfile(
 )
 
 # ==================================================
-# Taiwan Admin Lookup Engine
+# Taiwan Admin Dataset Build Engine
 # ==================================================
 
-class TaiwanAdminEngine(LookupSystemBase):
+class TaiwanAdminEngine(DatasetBuildEngineBase):
     ENGINE = "taiwan_admin"
     VERSION = "v2.0"
 
@@ -86,9 +85,7 @@ class TaiwanAdminEngine(LookupSystemBase):
         *,
         osm_pbf_path: str | Path | None = None,
         work_dir: Path | None = None,
-        use_ffsf: bool = True,  # retained for API compatibility; unused in build-only mode
     ):
-        self._use_ffsf = use_ffsf
         self._work_dir = Path(work_dir) if work_dir else DEFAULT_WORK_DIR
         self._work_dir.mkdir(parents=True, exist_ok=True)
 

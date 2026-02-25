@@ -1,29 +1,22 @@
 from abc import ABC
 from pathlib import Path
-from typing import Dict
 from datetime import datetime, timezone
 import hashlib
-
-from shapely.geometry import shape
-from shapely.prepared import prep
-from shapely.geometry.base import BaseGeometry
 import json
 import re
 
 
-class LookupSystemBase(ABC):
+class DatasetBuildEngineBase(ABC):
     """
-    Base class for country- or region-specific administrative lookup engines.
+    Base class for country- or region-specific deterministic dataset build engines.
 
     Responsibilities:
-    - Load admin datasets from an external, writable dataset directory
-    - Prepare geometries and spatial indices
-    - Provide spatial scope checks and raw polygon evidence
+    - Build engine-owned datasets in an external, writable work directory
+    - Define release packaging boundaries and write build manifests
+    - Emit runtime policy metadata consumed by downstream runtime repositories
 
     Non-responsibilities:
-    - Lookup pipeline orchestration
-    - Semantic evaluation
-    - Result projection
+    - Runtime lookup pipeline behavior
     - Country-specific logic
     """
 
@@ -31,19 +24,12 @@ class LookupSystemBase(ABC):
     ENGINE: str
     VERSION: str
 
-    # -------- semantic scope --------
+    # -------- dataset scope --------
     LEVELS: list[int]
     COUNTRY_ISO: str
     COUNTRY_NAME: str
-    NEARBY_FALLBACK_ENABLED: bool = True
-    NEARBY_MAX_DISTANCE_KM: float | None = 2.0
-    CONTEXT_ANCHOR_MAX_DISTANCE_KM: float | None = 200.0
 
     # -------- internal state (populated at init) --------
-    _country_bbox: list[float]
-    _country_geom: BaseGeometry
-    _country_raw_geom: BaseGeometry
-    _admin_units_by_level: Dict[int, list]
     DATASET_BUILD_MANIFEST_VERSION = "1.0"
     DATASET_BUILD_MANIFEST_PROFILE = "cadis_engine_dataset_build"
     DATASET_BUILD_MANIFEST_FILENAME = "dataset_build_manifest.json"
@@ -53,14 +39,8 @@ class LookupSystemBase(ABC):
     # lifecycle
     # ==================================================
 
-    def __init__(self, *, work_dir: Path, load_admin_dataset: bool = True):
+    def __init__(self, *, work_dir: Path):
         self._work_dir = Path(work_dir)
-
-        self._load_country_dataset()
-        if load_admin_dataset:
-            self._load_admin_dataset()
-        else:
-            self._admin_units_by_level = {}
 
     @classmethod
     def prepare_datasets(
@@ -75,7 +55,6 @@ class LookupSystemBase(ABC):
         engine = cls(
             osm_pbf_path=osm_pbf_path,
             work_dir=work_dir,
-            use_ffsf=True,
         )
         engine._write_dataset_build_manifest()
         return Path(engine._work_dir)
@@ -125,7 +104,7 @@ class LookupSystemBase(ABC):
     def _runtime_policy_payload(self) -> dict | None:
         """
         Engine-owned runtime policy payload.
-        Override in country engines that support Core v2 authoritative runtime.
+        Override in country engines as needed.
         """
         levels = sorted({int(level) for level in getattr(self, "LEVELS", [])})
         if not levels:
@@ -231,96 +210,15 @@ class LookupSystemBase(ABC):
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return out
 
-    @classmethod
-    def from_work_dir(
-        cls,
-        *,
-        work_dir: Path | None = None,
-        use_ffsf: bool = True,
-    ):
-        """
-        Runtime-only constructor.
-        """
-        return cls(
-            work_dir=work_dir,
-            use_ffsf=use_ffsf,
-        )
-
-    def _assert_required_runtime_datasets(self, required_paths: list[Path]) -> None:
+    def _assert_required_build_datasets(self, required_paths: list[Path]) -> None:
         missing = [p for p in required_paths if not p.exists()]
         if missing:
             missing_str = ", ".join(str(p) for p in missing)
             raise FileNotFoundError(
-                "Runtime datasets are missing. Run "
+                "Required build datasets are missing. Run "
                 f"{self.__class__.__name__}.prepare_datasets(...) first. "
                 f"Missing: {missing_str}"
             )
-
-    # ==================================================
-    # dataset loading (generic)
-    # ==================================================
-
-    def _load_country_dataset(self) -> None:
-        """
-        Load country boundary dataset.
-
-        Expected filename:
-        - <ISO>_COUNTRY.json
-        """
-        fname = f"{self.COUNTRY_ISO}_COUNTRY.json"
-        data = self._load_json_dataset(fname)
-
-        self._country_bbox = data["bbox"]
-        self._country_raw_geom = shape(data["geometry"])
-        self._country_geom = prep(self._country_raw_geom)
-
-    def _load_admin_dataset(self) -> None:
-        """
-        Load admin polygon dataset.
-
-        Expected filename:
-        - <engine>.json   (engine name lowercased)
-        """
-        fname = f"{self.ENGINE.lower()}.json"
-        raw = self._load_json_dataset(fname)
-
-        admin_by_level = raw.get("admin_by_level", {})
-        self._admin_units_by_level = {
-            int(level): units for level, units in admin_by_level.items()
-        }
-
-        # prepare geometries
-        for units in self._admin_units_by_level.values():
-            for u in units:
-                raw = shape(u["geometry"])
-                u["_raw_geom"] = raw
-                u["_geom"] = prep(raw)
-
-    # ==================================================
-    # dataset resolution helpers
-    # ==================================================
-
-    def _load_json_dataset(self, filename: str) -> dict:
-        """
-        Load a required JSON dataset from work_dir.
-
-        This dataset is expected to be generated beforehand
-        (e.g. by build_admin_dataset / build_country_from_ne where applicable).
-        """
-        path = self._work_dir / filename
-
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Required dataset not found: {path}"
-            )
-
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in dataset file: {path}"
-            ) from e
 
     # ==================================================
     # hierarchy loader
@@ -353,7 +251,7 @@ class LookupSystemBase(ABC):
 
                 indent = len(m.group("indent"))
 
-                # 🔑 CRITICAL: prune stack FIRST
+                # CRITICAL: prune stack first
                 # Remove nodes that are not ancestors of this indentation level
                 while stack and stack[-1]["indent"] >= indent:
                     stack.pop()

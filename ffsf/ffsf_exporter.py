@@ -12,7 +12,7 @@ from shapely.prepared import prep
 
 def _iter_features(admin_data: dict) -> list[dict]:
     """
-    Iterate features from an AdminLookup JSON dataset in deterministic order.
+    Iterate features from an admin dataset JSON file in deterministic order.
 
     Ordering rule (normative for exporter v0):
     - Features are iterated by admin level ascending (numeric sort of keys)
@@ -126,7 +126,7 @@ def export_cadis_to_ffsf(
     country_geometry_path: str | Path | None = None,
 ) -> dict:
     """
-    Convert an AdminLookup JSON dataset into FFSF binary format.
+    Convert an admin dataset JSON file into FFSF binary format.
 
     ROLE & RESPONSIBILITY
     ---------------------
@@ -143,7 +143,7 @@ def export_cadis_to_ffsf(
 
     DATASET ASSUMPTIONS
     -------------------
-    - Input JSON is a canonical AdminLookup dataset
+    - Input JSON is a canonical admin dataset
     - Each feature has a stable and pre-assigned feature_id at feature["id"]
     - Geometry is Polygon or MultiPolygon (WGS84 lon/lat)
 

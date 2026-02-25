@@ -131,7 +131,6 @@ cadis-dataset-engine/
 ├── package.py
 ├── publish.py
 ├── base.py
-├── core.py
 ├── dataset.py
 ├── engines/
 │   └── <iso2>/

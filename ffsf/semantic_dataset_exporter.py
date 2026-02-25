@@ -22,7 +22,7 @@ This dataset represents **semantic administrative relationships only**:
 
 It intentionally contains **no geometry** and **no spatial logic**.
 
-The exported result is meant to be consumed by frontend AdminLookup engines
+The exported result is meant to be consumed by frontend runtime engines
 as *semantic evidence*, optionally supplementing polygon-based lookup results
 (e.g. FFSF).
 
@@ -37,16 +37,16 @@ This module:
 This module does NOT:
 - Perform spatial reasoning
 - Resolve administrative conflicts
-- Decide lookup correctness
+- Decide runtime resolution correctness
 - Enforce country-specific policies
 
 All semantic *interpretation* and *final authority* belongs to the
-country-specific AdminEngine on the frontend.
+country-specific runtime engine on the frontend.
 
 Country-Specific Usage Notes
 ----------------------------
 
-Different AdminEngines may choose to use or ignore this dataset:
+Different runtime engines may choose to use or ignore this dataset:
 
 - Taiwan:
   Semantic supplementation is REQUIRED due to known polygon gaps
@@ -71,7 +71,7 @@ This module follows a strict separation of concerns:
      Engines decide meaning."
 
 Any future change in semantic supplementation policy MUST be implemented
-at the AdminEngine layer, not here.
+at the runtime engine layer, not here.
 """
 
 def _require_field(node: dict, field: str):
