@@ -20,7 +20,5 @@ RUN pip install \
     "geopandas==1.1.1" \
     "osmium==4.1.1"
 
-COPY . /app
-
 # Default entrypoint is generic build dispatcher.
 ENTRYPOINT ["python", "/app/build.py"]

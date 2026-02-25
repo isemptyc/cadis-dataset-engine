@@ -55,6 +55,7 @@ docker build -t cadis-engine .
 # - ghcr.io/isemptyc/cadis-dataset-engine:2026-02
 # - cadis-engine
 docker run --rm \
+  -v $(pwd):/app \
   -v /path/to/osm:/data/osm:ro \
   -v /path/to/output:/data/out \
   ghcr.io/isemptyc/cadis-dataset-engine:2026-02 \
