@@ -262,4 +262,8 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
                 "parent_level": 4,
                 "child_levels": [7, 8],
             },
+            "repair_rules": {
+                "parent_level": 4,
+                "child_levels": [],
+            },
         }
