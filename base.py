@@ -166,7 +166,7 @@ class DatasetBuildEngineBase(ABC):
         return self._work_dir / self.BUILD_MANIFEST_FILENAME
 
     def _dataset_build_manifest_dataset_id(self) -> str:
-        return f"engine.{self.COUNTRY_ISO.lower()}_admin"
+        return f"{self.COUNTRY_ISO.lower()}.admin"
 
     def _write_dataset_build_manifest(self) -> Path:
         self._write_runtime_policy()
