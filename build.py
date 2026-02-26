@@ -83,8 +83,8 @@ def main() -> int:
     work_dir = out_root / country.upper() / version
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    if country == "tw" and version == "1.0.0":
-        if args.verified:
+    if country == "tw":
+        if args.verified and version == "1.0.0":
             actual_sha = _sha256_file(args.osm.resolve())
             if actual_sha != TW_1_0_0_OSM_SHA256:
                 raise ValueError(
