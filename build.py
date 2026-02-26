@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 from pathlib import Path
 
 from engines.tw.engine_tw import TaiwanAdminEngine
@@ -37,6 +38,24 @@ def _read_osm_replication_timestamp_utc(pbf_path: Path) -> str | None:
         return None
     finally:
         reader.close()
+
+
+def _write_source_osm_identity(*, work_dir: Path, osm_pbf_path: Path) -> None:
+    manifest_path = work_dir / "dataset_build_manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"dataset build manifest missing: {manifest_path}")
+
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"dataset build manifest must be a JSON object: {manifest_path}")
+
+    osm_path = osm_pbf_path.resolve()
+    payload["source_osm"] = {
+        "file_name": osm_path.name,
+        "file_sha256": _sha256_file(osm_path),
+        "replication_timestamp_utc": _read_osm_replication_timestamp_utc(osm_path),
+    }
+    manifest_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:
@@ -81,6 +100,10 @@ def main() -> int:
         TaiwanAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
         )
         print(work_dir)
         return 0
