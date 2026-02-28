@@ -266,4 +266,9 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
                 "parent_level": 4,
                 "child_levels": [],
             },
+            "nearby_policy": {
+                "enabled": True,
+                "max_distance_km": 2.0,
+                "offshore_max_distance_km": 20.0,
+            },
         }
