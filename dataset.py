@@ -135,6 +135,7 @@ def extract_admin_hierarchy(
     *,
     name_keys: Iterable[str] = ("name",),
     country_geometry_path: Optional[Path] = None,
+    target_levels: Optional[Iterable[int]] = None,
 ):
     """
     Extract administrative hierarchy from OSM relations only.
@@ -150,9 +151,21 @@ def extract_admin_hierarchy(
     This is expected behavior and reflects the fact that OpenStreetMap may
     contain multiple relations for the same administrative unit with differing
     geometry quality and hierarchy completeness.
+
+    Optional level filtering
+    ------------------------
+    If `target_levels` is provided, only relations whose parsed `admin_level`
+    is in that set are kept. If omitted, legacy behavior is preserved
+    (all administrative relations are considered).
     """
     import hashlib
     import osmium
+
+    target_levels_set = None
+    if target_levels is not None:
+        target_levels_set = {int(lvl) for lvl in target_levels}
+        if not target_levels_set:
+            raise ValueError("target_levels must not be empty when provided.")
 
     apply_country_filter = (
         country_geometry_path is not None and _should_apply_country_filter(pbf_path)
@@ -262,12 +275,15 @@ def extract_admin_hierarchy(
                 return
 
             admin_level = tags.get("admin_level")
+            admin_level_int = int(admin_level) if admin_level and admin_level.isdigit() else None
+            if target_levels_set is not None and admin_level_int not in target_levels_set:
+                return
 
             node = {
                 "id": rid,
                 "osm_id": r.id,
                 "name": _pick_name(tags, name_keys),
-                "admin_level": int(admin_level) if admin_level and admin_level.isdigit() else None,
+                "admin_level": admin_level_int,
                 "tags": tags,
             }
 

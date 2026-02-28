@@ -140,6 +140,7 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
                     pbf_path=osm_pbf_path,
                     output_dir=self._work_dir,
                     name_keys=TW_PROFILE.name_keys,
+                    target_levels=self.LEVELS,
                 )
 
             render_admin_tree(
