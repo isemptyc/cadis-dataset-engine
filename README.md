@@ -65,6 +65,12 @@ docker run --rm \
   --output /data/out
 ```
 
+For large country extracts, low Docker memory limits may terminate the build with exit code `137` (OOM/SIGKILL).
+Recommended Docker Desktop baseline for stable reproduction:
+  - `CPU`: at least 2~4
+  - `Memory`: at least 8~16 GB
+  - `Swap`: at least 4 GB
+
 The resulting release files must match the published manifest checksums in `cadis-dataset`.
 
 For strict reproducibility verification against pinned OSM identity metadata, add:
