@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from engines.jp.engine_jp import JapanAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
 import osmium
 
@@ -98,6 +99,18 @@ def main() -> int:
                     f"expected={TW_1_0_0_OSM_REPLICATION_TIMESTAMP_UTC} actual={actual_ts!r}"
                 )
         TaiwanAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "jp":
+        JapanAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
         )
