@@ -1,5 +1,4 @@
 from pathlib import Path
-import json
 import shutil
 
 from base import DatasetBuildEngineBase
@@ -13,17 +12,12 @@ from dataset import (
 from ffsf import (
     export_cadis_to_ffsf,
 )
-from ffsf.semantic_dataset_exporter import (
-    export_admin_semantic_dataset,
-)
 
 """
 JapanAdminDatasetBuild
 ├── Polygon extraction dataset (japan_admin.json)
 ├── Hierarchy text rendering   (admin_tree.txt)
-├── Semantic runtime layer     (japan_admin_semantic.json)
-├── Geometry runtime layer     (geometry.ffsf + geometry_meta.json)
-└── Runtime hierarchy layer    (hierarchy.json)
+└── Geometry runtime layer     (geometry.ffsf + geometry_meta.json)
 """
 
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "japan"
@@ -98,11 +92,9 @@ class JapanAdminEngine(DatasetBuildEngineBase):
         self._admin_dataset_path = self._work_dir / "japan_admin.json"
         self._ffsf_dataset_path = self._work_dir / "japan_admin.bin"
         self._ffsf_meta_path = self._work_dir / "JP_feature_meta_by_index.json"
-        self._semantic_dataset_path = self._work_dir / "japan_admin_semantic.json"
         self._admin_hierarchy_path = self._work_dir / "admin_tree.txt"
         self._runtime_geometry_path = self._work_dir / "geometry.ffsf"
         self._runtime_geometry_meta_path = self._work_dir / "geometry_meta.json"
-        self._runtime_hierarchy_path = self._work_dir / "hierarchy.json"
 
         if osm_pbf_path is None:
             raise ValueError(
@@ -169,25 +161,6 @@ class JapanAdminEngine(DatasetBuildEngineBase):
                 version=3,
             )
 
-        if not self._semantic_dataset_path.exists():
-            hierarchy_nodes = self._load_admin_hierarchy(self._admin_hierarchy_path)
-            semantic_nodes = [
-                {
-                    "feature_id": n["id"],
-                    "level": n["level"],
-                    "name": n["name"],
-                    "parent_id": n.get("parent_id"),
-                }
-                for n in hierarchy_nodes
-            ]
-            export_admin_semantic_dataset(
-                nodes=semantic_nodes,
-                output_path=self._semantic_dataset_path,
-                version="jp-admin-semantic-1.0.0",
-                country=self.COUNTRY_ISO,
-                source="admin_tree.txt",
-            )
-
         self._ensure_runtime_release_layers()
 
     def _release_dataset_paths(self) -> list[Path]:
@@ -196,7 +169,6 @@ class JapanAdminEngine(DatasetBuildEngineBase):
             self._runtime_policy_path(),
             self._runtime_geometry_path,
             self._runtime_geometry_meta_path,
-            self._runtime_hierarchy_path,
         ):
             if p.exists():
                 paths.append(p)
@@ -205,32 +177,6 @@ class JapanAdminEngine(DatasetBuildEngineBase):
     def _write_dataset_build_manifest(self) -> Path:
         self._ensure_runtime_release_layers()
         return super()._write_dataset_build_manifest()
-
-    def _load_semantic_nodes(self) -> list[dict]:
-        payload = json.loads(self._semantic_dataset_path.read_text(encoding="utf-8"))
-        nodes_raw = payload.get("nodes", {})
-        out = []
-        if not isinstance(nodes_raw, dict):
-            return out
-        for feature_id, row in nodes_raw.items():
-            if not isinstance(row, list) or len(row) != 3:
-                continue
-            level, name, parent_id = row
-            if not isinstance(level, int):
-                continue
-            if not isinstance(name, str) or not name:
-                continue
-            if parent_id is not None and not isinstance(parent_id, str):
-                continue
-            out.append(
-                {
-                    "id": feature_id,
-                    "level": level,
-                    "name": name,
-                    "parent_id": parent_id,
-                }
-            )
-        return out
 
     def _ensure_runtime_release_layers(self) -> None:
         if not self._ffsf_dataset_path.exists() or not self._ffsf_meta_path.exists():
@@ -247,12 +193,6 @@ class JapanAdminEngine(DatasetBuildEngineBase):
             or self._runtime_geometry_meta_path.stat().st_size != self._ffsf_meta_path.stat().st_size
         ):
             shutil.copy2(self._ffsf_meta_path, self._runtime_geometry_meta_path)
-
-        semantic_nodes = self._load_semantic_nodes()
-        self._runtime_hierarchy_path.write_text(
-            json.dumps({"nodes": semantic_nodes}, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
 
     def _runtime_policy_payload(self) -> dict:
         allowed_shapes = sorted(self.ALLOWED_SHAPES)

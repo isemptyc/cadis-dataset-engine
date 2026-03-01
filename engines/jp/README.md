@@ -74,12 +74,10 @@ Parent fallback:
 2. Extract relation hierarchy (`admin_nodes.json`, `admin_edges.json`)
 3. Render hierarchy text (`admin_tree.txt`)
 4. Export spatial binary layer (`japan_admin.bin` + `JP_feature_meta_by_index.json`)
-5. Export semantic layer (`japan_admin_semantic.json`)
-6. Materialize runtime release layers:
+5. Materialize runtime release layers:
    - `geometry.ffsf`
    - `geometry_meta.json`
-   - `hierarchy.json`
-7. Emit runtime policy + build manifest
+6. Emit runtime policy + build manifest
 
 ## 7. Runtime Policy Metadata
 
@@ -105,7 +103,6 @@ The engine release boundary (for manifest packaging) is:
 - `runtime_policy.json`
 - `geometry.ffsf`
 - `geometry_meta.json`
-- `hierarchy.json`
 
 ## 9. Non-Goals
 
