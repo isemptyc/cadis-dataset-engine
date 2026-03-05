@@ -77,6 +77,7 @@ Parent fallback:
 5. Materialize runtime release layers:
    - `geometry.ffsf`
    - `geometry_meta.json`
+   - `hierarchy.json` (level-3/level-4 supplementation layer)
 6. Emit runtime policy + build manifest
 
 ## 7. Runtime Policy Metadata
@@ -89,8 +90,11 @@ Parent fallback:
   - `ok` for `[3,4]` and `[3,7]`
   - `partial` for other allowed shapes
 - `layers`:
-  - `hierarchy_required = false`
+  - `hierarchy_required = true`
   - `repair_required = false`
+- `hierarchy_repair_rules`:
+  - `parent_level = 3`
+  - `child_levels = [4]`
 - `nearby_policy`:
   - `enabled = true`
   - `max_distance_km = 2.0`
@@ -103,6 +107,7 @@ The engine release boundary (for manifest packaging) is:
 - `runtime_policy.json`
 - `geometry.ffsf`
 - `geometry_meta.json`
+- `hierarchy.json`
 
 ## 9. Non-Goals
 

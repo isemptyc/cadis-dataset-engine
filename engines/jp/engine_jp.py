@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import shutil
 
 from base import DatasetBuildEngineBase
@@ -17,7 +18,8 @@ from ffsf import (
 JapanAdminDatasetBuild
 ├── Polygon extraction dataset (japan_admin.json)
 ├── Hierarchy text rendering   (admin_tree.txt)
-└── Geometry runtime layer     (geometry.ffsf + geometry_meta.json)
+├── Geometry runtime layer     (geometry.ffsf + geometry_meta.json)
+└── Runtime hierarchy layer    (hierarchy.json)
 """
 
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "japan"
@@ -78,6 +80,16 @@ class JapanAdminEngine(DatasetBuildEngineBase):
     COUNTRY_ISO = "JP"
     COUNTRY_NAME = "Japan"
     RUNTIME_POLICY_VERSION = "1.0"
+    MODERN_REGION_NAMES = {
+        "北海道地方",
+        "東北地方",
+        "関東地方",
+        "中部地方",
+        "近畿地方",
+        "中国地方",
+        "四国地方",
+        "九州地方",
+    }
 
     def __init__(
         self,
@@ -95,6 +107,7 @@ class JapanAdminEngine(DatasetBuildEngineBase):
         self._admin_hierarchy_path = self._work_dir / "admin_tree.txt"
         self._runtime_geometry_path = self._work_dir / "geometry.ffsf"
         self._runtime_geometry_meta_path = self._work_dir / "geometry_meta.json"
+        self._runtime_hierarchy_path = self._work_dir / "hierarchy.json"
 
         if osm_pbf_path is None:
             raise ValueError(
@@ -169,6 +182,7 @@ class JapanAdminEngine(DatasetBuildEngineBase):
             self._runtime_policy_path(),
             self._runtime_geometry_path,
             self._runtime_geometry_meta_path,
+            self._runtime_hierarchy_path,
         ):
             if p.exists():
                 paths.append(p)
@@ -177,6 +191,18 @@ class JapanAdminEngine(DatasetBuildEngineBase):
     def _write_dataset_build_manifest(self) -> Path:
         self._ensure_runtime_release_layers()
         return super()._write_dataset_build_manifest()
+
+    def _load_feature_meta_rows(self) -> list[dict]:
+        payload = json.loads(self._ffsf_meta_path.read_text(encoding="utf-8"))
+        if isinstance(payload, list):
+            rows = payload
+        elif isinstance(payload, dict):
+            rows = payload.get("features", [])
+            if isinstance(rows, dict):
+                rows = list(rows.values())
+        else:
+            rows = []
+        return [r for r in rows if isinstance(r, dict)]
 
     def _ensure_runtime_release_layers(self) -> None:
         if not self._ffsf_dataset_path.exists() or not self._ffsf_meta_path.exists():
@@ -194,6 +220,74 @@ class JapanAdminEngine(DatasetBuildEngineBase):
         ):
             shutil.copy2(self._ffsf_meta_path, self._runtime_geometry_meta_path)
 
+        feature_rows = self._load_feature_meta_rows()
+        level4_name_to_id = {
+            r["name"]: r["feature_id"]
+            for r in feature_rows
+            if r.get("level") == 4 and isinstance(r.get("name"), str) and isinstance(r.get("feature_id"), str)
+        }
+        level3_name_to_id = {
+            r["name"]: r["feature_id"]
+            for r in feature_rows
+            if r.get("level") == 3 and isinstance(r.get("name"), str) and isinstance(r.get("feature_id"), str)
+        }
+
+        hierarchy_nodes = self._load_admin_hierarchy(self._admin_hierarchy_path)
+        node_by_id = {n["id"]: n for n in hierarchy_nodes}
+        pref_to_region: dict[str, str] = {}
+        for n in hierarchy_nodes:
+            if n.get("level") != 4:
+                continue
+            pref_name = n.get("name")
+            if pref_name not in level4_name_to_id:
+                continue
+            parent = node_by_id.get(n.get("parent_id"))
+            if parent is None or parent.get("level") != 3:
+                continue
+            region_name = parent.get("name")
+            if region_name not in self.MODERN_REGION_NAMES:
+                continue
+            existing = pref_to_region.get(pref_name)
+            if existing is None:
+                pref_to_region[pref_name] = region_name
+            elif existing != region_name:
+                # Deterministic tie-breaker for malformed hierarchy: keep lexicographically smaller region.
+                pref_to_region[pref_name] = min(existing, region_name)
+
+        region_names = sorted(set(pref_to_region.values()))
+        region_name_to_runtime_id: dict[str, str] = {}
+        for idx, region_name in enumerate(region_names, start=1):
+            region_name_to_runtime_id[region_name] = level3_name_to_id.get(
+                region_name,
+                f"jp_region_{idx:02d}",
+            )
+
+        runtime_nodes = []
+        for region_name in region_names:
+            runtime_nodes.append(
+                {
+                    "id": region_name_to_runtime_id[region_name],
+                    "level": 3,
+                    "name": region_name,
+                    "parent_id": None,
+                }
+            )
+
+        for pref_name in sorted(pref_to_region.keys()):
+            runtime_nodes.append(
+                {
+                    "id": level4_name_to_id[pref_name],
+                    "level": 4,
+                    "name": pref_name,
+                    "parent_id": region_name_to_runtime_id[pref_to_region[pref_name]],
+                }
+            )
+
+        self._runtime_hierarchy_path.write_text(
+            json.dumps({"nodes": runtime_nodes}, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
     def _runtime_policy_payload(self) -> dict:
         allowed_shapes = sorted(self.ALLOWED_SHAPES)
         return {
@@ -208,12 +302,12 @@ class JapanAdminEngine(DatasetBuildEngineBase):
                 for s in allowed_shapes
             ],
             "layers": {
-                "hierarchy_required": False,
+                "hierarchy_required": True,
                 "repair_required": False,
             },
             "hierarchy_repair_rules": {
                 "parent_level": 3,
-                "child_levels": [4, 7],
+                "child_levels": [4],
             },
             "repair_rules": {
                 "parent_level": 3,
