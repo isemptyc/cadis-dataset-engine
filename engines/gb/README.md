@@ -42,4 +42,8 @@ The engine builds:
 ## 5. Notes
 
 - Build dispatch accepts both `gb` and `uk`, but output is written under `GB/`
-- The current hierarchy export remains a first-pass inferred implementation
+- Runtime `hierarchy.json` is derived from the geometry-backed admin dataset,
+  not directly from the raw relation tree, to keep the runtime hierarchy closer
+  to the GB polygon dataset scope
+- Raw relation hierarchy is used only as a filtered fallback to fill missing
+  parents for geometry-backed nodes

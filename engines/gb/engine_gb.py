@@ -188,39 +188,102 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
         self._ensure_runtime_release_layers()
         return super()._write_dataset_build_manifest()
 
-    def _build_semantic_nodes(self) -> list[dict]:
-        hierarchy_nodes = self._load_admin_hierarchy(self._admin_hierarchy_path)
-        node_map: dict[str, dict] = {}
+    def _normalize_runtime_feature_id(self, feature_id: str | None) -> str | None:
+        if feature_id is None:
+            return None
+        prefix = f"{self.COUNTRY_ISO.lower()}_"
+        if feature_id.startswith(prefix):
+            return feature_id[len(prefix):]
+        return feature_id
 
+    def _load_admin_dataset_nodes(self) -> list[dict]:
+        payload = json.loads(self._admin_dataset_path.read_text(encoding="utf-8"))
+        admin_by_level = payload.get("admin_by_level", {})
+        if not isinstance(admin_by_level, dict):
+            return []
+
+        nodes: list[dict] = []
+        for level in self.LEVELS:
+            rows = admin_by_level.get(str(level), [])
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                feature_id = row.get("id")
+                name = row.get("name")
+                if not isinstance(feature_id, str) or not isinstance(name, str) or not name:
+                    continue
+                parent_id = row.get("parent")
+                if parent_id is not None and not isinstance(parent_id, str):
+                    parent_id = None
+                nodes.append(
+                    {
+                        "id": self._normalize_runtime_feature_id(feature_id),
+                        "level": level,
+                        "name": name,
+                        "parent_id": self._normalize_runtime_feature_id(parent_id),
+                    }
+                )
+        return nodes
+
+    def _load_tree_parent_candidates(self) -> dict[str, list[dict]]:
+        hierarchy_nodes = self._load_admin_hierarchy(self._admin_hierarchy_path)
+        candidates: dict[str, list[dict]] = {}
         for node in hierarchy_nodes:
             if node["level"] not in self.LEVELS:
                 continue
+            node_id = self._normalize_runtime_feature_id(node["id"])
+            parent_id = self._normalize_runtime_feature_id(node.get("parent_id"))
+            candidates.setdefault(node_id, []).append(
+                {
+                    "level": node["level"],
+                    "parent_id": parent_id,
+                }
+            )
+        return candidates
 
-            feature_id = node["id"]
-            candidate = {
-                "feature_id": feature_id,
-                "level": node["level"],
-                "name": node["name"],
-                "parent_id": node.get("parent_id"),
-            }
+    def _build_semantic_nodes(self) -> list[dict]:
+        dataset_nodes = self._load_admin_dataset_nodes()
+        node_by_id = {node["id"]: node for node in dataset_nodes}
+        node_ids = set(node_by_id.keys())
+        tree_candidates = self._load_tree_parent_candidates()
 
-            existing = node_map.get(feature_id)
-            if existing is None:
-                node_map[feature_id] = candidate
+        supplemented_parents: dict[str, str | None] = {}
+        for node in dataset_nodes:
+            parent_id = node.get("parent_id")
+            if parent_id in node_ids:
+                supplemented_parents[node["id"]] = parent_id
                 continue
 
-            existing_parent = existing.get("parent_id")
-            candidate_parent = candidate.get("parent_id")
+            child_level = node["level"]
+            valid_candidates: list[tuple[int, str]] = []
+            for candidate in tree_candidates.get(node["id"], []):
+                candidate_parent = candidate.get("parent_id")
+                if candidate_parent not in node_ids:
+                    continue
+                parent_node = node_by_id.get(candidate_parent)
+                if parent_node is None or parent_node["level"] >= child_level:
+                    continue
+                valid_candidates.append((parent_node["level"], candidate_parent))
 
-            if existing_parent == candidate_parent:
-                continue
+            if valid_candidates:
+                valid_candidates.sort(key=lambda item: (-item[0], item[1]))
+                supplemented_parents[node["id"]] = valid_candidates[0][1]
+            else:
+                supplemented_parents[node["id"]] = None
 
-            existing_key = "" if existing_parent is None else existing_parent
-            candidate_key = "" if candidate_parent is None else candidate_parent
-            if candidate_key < existing_key:
-                node_map[feature_id] = candidate
-
-        return [node_map[feature_id] for feature_id in sorted(node_map.keys())]
+        semantic_nodes: list[dict] = []
+        for node in sorted(dataset_nodes, key=lambda n: (n["level"], n["name"], n["id"])):
+            semantic_nodes.append(
+                {
+                    "feature_id": node["id"],
+                    "level": node["level"],
+                    "name": node["name"],
+                    "parent_id": supplemented_parents[node["id"]],
+                }
+            )
+        return semantic_nodes
 
     def _load_semantic_nodes(self) -> list[dict]:
         payload = json.loads(self._semantic_dataset_path.read_text(encoding="utf-8"))
