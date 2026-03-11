@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from engines.gb.engine_gb import GreatBritainAdminEngine
 from engines.jp.engine_jp import JapanAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
 import osmium
@@ -18,6 +19,8 @@ def _normalize_country(raw: str) -> str:
     value = raw.strip().lower()
     if not value:
         raise ValueError("country must be non-empty")
+    if value == "uk":
+        return "gb"
     return value
 
 
@@ -111,6 +114,18 @@ def main() -> int:
 
     if country == "jp":
         JapanAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "gb":
+        GreatBritainAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
         )
