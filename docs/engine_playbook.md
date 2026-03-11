@@ -149,6 +149,8 @@ The first real step is not writing `runtime_policy.json`. It is generating the e
 A practical probe step looks like this:
 
 ```python
+NE_ROOT = Path("/path/to/nature_earth_dataset")
+COUNTRY_DBF = NE_ROOT / "countries" / "ne_10m_admin_0_countries.dbf"
 def build_admin_tree(
     country_pbf_path: Path,
     output_dir: Path,
@@ -165,6 +167,38 @@ def build_admin_tree(
     - admin_report.json
     - admin_tree.txt
     """
+    from dataset import build_country_from_ne, extract_admin_hierarchy, render_admin_tree
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    target_file = output_dir / "admin_tree.txt"
+    country_path = None
+
+    if apply_country_filter:
+        country_path = output_dir / f"{country_iso.upper()}_COUNTRY.json"
+
+        if not COUNTRY_DBF.exists():
+            raise FileNotFoundError(f"Country DBF not found: {COUNTRY_DBF}")
+
+        if not country_path.exists():
+            build_country_from_ne(
+                dbf_path=COUNTRY_DBF,
+                output_path=country_path,
+                country_iso=country_iso.upper(),
+                country_name=country_name,
+            )
+
+    extract_admin_hierarchy(
+        pbf_path=str(country_pbf_path),
+        output_dir=output_dir,
+        name_keys=("name", "name:en"),
+        country_geometry_path=country_path,
+    )
+    render_admin_tree(
+        nodes_path=output_dir / "admin_nodes.json",
+        edges_path=output_dir / "admin_edges.json",
+        output_path=target_file,
+    )
+    return target_file
 ```
 
 This step is an OSM administrative hierarchy scan. It does not build the final runtime dataset yet. It extracts and renders the country's administrative graph so you can decide:
@@ -538,20 +572,6 @@ Validate both:
 
 This development validation step is necessary but not sufficient for release. Promotion requires the stronger dataset-wide gates defined in "Promotion Readiness Gates."
 
-### 15. Release the Country Support
-
-After the dataset is proven and passes promotion gates:
-
-1. bump the package version in `pyproject.toml` and `cadis/version.py`
-2. update any versioned docs examples
-3. build a fresh wheel
-4. commit and push
-5. add a version tag
-6. publish
-7. write release notes that describe the change as country support
-
-For example: "support United Kingdom lookup" is a better release description than "new UK engine."
-
 ## What Usually Goes Wrong
 
 In practice, country integrations usually fail for these reasons:
@@ -604,8 +624,5 @@ For the United Kingdom support release, the effective procedure looked like this
    - artifact scope is coherent
    - the finalized hierarchy is structurally acceptable
 9. verify broader evaluation metrics and repeated rebuild determinism
-10. add `GB` to the supported ISO set
-11. bump Cadis to a new release version
-12. build, tag, and publish
 
 That is the expected pattern for future country onboarding unless Cadis architecture changes materially.
