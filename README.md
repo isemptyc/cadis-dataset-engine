@@ -145,6 +145,8 @@ cadis-dataset-engine/
 ├── verify.py
 ├── base.py
 ├── dataset.py
+├── docs/
+│   └── engine_playbook.md
 ├── engines/
 │   └── <iso2>/
 │       └── engine_<iso2>.py
