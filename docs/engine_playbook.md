@@ -7,6 +7,18 @@ Repository references:
 - Cadis runtime: [github.com/isemptyc/cadis](https://github.com/isemptyc/cadis)
 - Country dataset build/playbook home: [github.com/isemptyc/cadis-dataset-engine](https://github.com/isemptyc/cadis-dataset-engine)
 
+Recommended Python stack:
+
+- hierarchy probes, geometry builds, and validation commands require a working geospatial Python environment
+- at minimum, install the modules used directly or transitively by the pipeline:
+  - `pyosmium`
+  - `pandas`
+  - `numpy`
+  - `geopandas`
+  - `shapely`
+  - `pyproj`
+- in practice, make sure `pyproj` can resolve its PROJ data files correctly before running build commands
+
 The key architectural point is that Cadis is dataset-driven.
 
 This playbook is the only supported country onboarding procedure.
@@ -37,6 +49,12 @@ In practice, all real country onboarding starts from source data evidence:
 
 - OpenStreetMap extract(s) for the target country or region
 - Natural Earth country boundary data when explicit country scoping is needed
+
+Before running probe or build steps, confirm the Python environment includes the required geospatial modules. A typical setup looks like:
+
+```bash
+python -m pip install pyosmium pandas numpy geopandas shapely pyproj
+```
 
 If those inputs are not available yet, engine creation has not actually started.
 
