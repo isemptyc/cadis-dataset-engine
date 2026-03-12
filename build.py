@@ -8,6 +8,7 @@ from pathlib import Path
 from engines.gb.engine_gb import GreatBritainAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
 from engines.jp.engine_jp import JapanAdminEngine
+from engines.kr.engine_kr import SouthKoreaAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
 import osmium
 
@@ -115,6 +116,18 @@ def main() -> int:
 
     if country == "jp":
         JapanAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "kr":
+        SouthKoreaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
         )
