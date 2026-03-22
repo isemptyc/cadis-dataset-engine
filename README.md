@@ -159,9 +159,19 @@ cadis-dataset-engine/
 
 ## Licensing
 
-Code in this repository is licensed under the MIT License.
+Code in this repository is licensed under the Apache License 2.0. See `LICENSE`.
 
-Datasets generated using this repository may be subject to Open Database License (ODbL) obligations if derived from OpenStreetMap data.
+This repository builds derived dataset artifacts from third-party geospatial sources, primarily OpenStreetMap data, and in some engine pipelines may also use Natural Earth data.
+
+OpenStreetMap data must be obtained separately and is licensed under the Open Database License (ODbL). Use of OpenStreetMap-derived data is subject to ODbL, and distribution of derivative databases or public use may trigger attribution and share-alike requirements under that license.
+
+Natural Earth, where used, is a separate third-party input and is not covered by this repository's Apache 2.0 license. It must be obtained and used under its own published terms.
+
+The separately published `cadis-dataset` repository remains a distinct artifact and is licensed under ODbL as applicable to the released dataset contents.
+
+Using this repository to generate dataset artifacts does not by itself relicense those published dataset artifacts under Apache 2.0.
+
+This repository does not provide any dataset for direct consumption. Dataset licensing obligations are defined by the corresponding dataset release repository.
 
 ---
 
@@ -172,4 +182,5 @@ Build workflows require externally obtained OpenStreetMap extracts.
 This repository does not host, distribute, or guarantee long-term availability of historical raw extracts.
 
 OpenStreetMap data © OpenStreetMap contributors
-Licensed under ODbL 1.0
+Licensed under the Open Database License (ODbL) 1.0
+https://www.openstreetmap.org/copyright
