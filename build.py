@@ -73,6 +73,11 @@ def main() -> int:
     parser.add_argument("--osm", required=True, type=Path, help="Path to OSM PBF input")
     parser.add_argument("--output", required=True, type=Path, help="Output directory root")
     parser.add_argument(
+        "--country-geometry",
+        type=Path,
+        help="Optional country boundary JSON used for scoped export metadata.",
+    )
+    parser.add_argument(
         "--verified",
         action="store_true",
         help="Enable strict OSM identity verification (checksum + replication timestamp) for pinned targets.",

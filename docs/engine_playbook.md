@@ -262,6 +262,47 @@ Operationally, this means:
 When the source PBF is already country-specific, `apply_country_filter=False` is usually fine.
 When using combined extracts or when relation hierarchy contamination is a risk, Natural Earth country geometry (or an equivalent country boundary source) should be treated as part of the standard probe toolkit rather than an optional afterthought.
 
+#### When Natural Earth Is Needed
+
+Natural Earth is needed when the engine requires explicit country-scope truth that cannot be trusted to emerge from the OSM input alone.
+
+Typical cases:
+
+- the input PBF contains multiple countries or a cross-border region
+- the relation hierarchy probe is picking up neighboring-country admin structures
+- the runtime integration expects `geometry_meta.json` to contain country-scope metadata such as `country_scope_flag`
+- boundary-sensitive behavior such as nearby/offshore handling depends on a stable country outline external to the admin polygons themselves
+- the country itself has a non-trivial scope question and the engine must decide what the dataset's country boundary means before any scoped metadata is exported
+
+Concrete example:
+
+- target country: Singapore
+- source extract: `malaysia-singapore-brunei-latest.osm.pbf`
+- why Natural Earth is needed:
+  - without an external Singapore boundary, the probe and build steps can admit Malaysia or Brunei administrative relations into the observed graph
+  - level distribution, allowed-shape decisions, and any scope-sensitive metadata would then be derived from a polluted multi-country input rather than Singapore alone
+
+Another example:
+
+- target country: France
+- design question:
+  - should `FR` mean metropolitan France only, or should it include overseas departments / collectivities and other sovereign territories
+- why Natural Earth may be needed:
+  - once the engine decides the intended lookup scope, it needs an external boundary source that matches that product decision closely enough for scoped probe/build/export behavior
+  - the hard part is not only geometry processing; it is deciding what the France dataset is supposed to include before country-scope metadata is emitted
+
+Typical non-cases:
+
+- the input is already a single-country Geofabrik-style extract
+- the engine can be modeled and validated cleanly without probe-time country gating
+- runtime does not consume exported country-scope metadata for that country
+
+Important caution:
+
+- Natural Earth is a boundary reference, not a guarantee of semantic correctness for every administrative feature
+- before enabling export-time country-scope metadata, verify that the chosen boundary source does not wrongly exclude valid features such as islands, enclaves, lagoon municipalities, or coastal admin units
+- if the boundary source causes false exclusions, keep the engine unscoped until a better boundary source or country-specific scoping rule is available
+
 ### 3. Derive Runtime Policy from the Probe Artifacts
 
 `runtime_policy.json` should be derived from what the probe reveals, not written from intuition alone.
@@ -487,6 +528,8 @@ Cadis runtime expects files compatible with `FFSFSpatialIndexV3`. Every feature 
 - a canonical name
 
 If nearby/offshore behavior matters, include accurate country-scope geometry. Boundary quality directly affects fallback behavior.
+
+If runtime needs country-scope metadata in `geometry_meta.json`, compute that scope truth at export time from the original full-precision geometry using the external country boundary source. Do not derive country-scope inclusion later from reconstructed or quantized FFSF geometry.
 
 ### 9. Add Hierarchy and Repair Layers Only When They Add Deterministic Value
 
