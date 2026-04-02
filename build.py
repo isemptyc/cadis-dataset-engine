@@ -9,6 +9,7 @@ from engines.gb.engine_gb import GreatBritainAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
 from engines.jp.engine_jp import JapanAdminEngine
 from engines.kr.engine_kr import SouthKoreaAdminEngine
+from engines.se.engine_se import SwedenAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
 import osmium
 
@@ -157,6 +158,18 @@ def main() -> int:
 
     if country == "it":
         ItalyAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "se":
+        SwedenAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
         )
