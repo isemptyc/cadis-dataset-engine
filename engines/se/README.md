@@ -42,6 +42,9 @@ Probe notes:
   neighborhoods, and similar local units
 - the geometry-backed build for `[4,7]` yields `21` counties and `290`
   municipalities with full municipality-to-county parent coverage
+- the engine writes hierarchy artifacts from the exported dataset spine so the
+  build-stage hierarchy remains Sweden-scoped and does not retain neighboring
+  level-4/7 inventory from raw relation scans
 
 ## 4. Build Inputs
 
@@ -61,7 +64,7 @@ expected source is a single-country Sweden extract.
 `SwedenAdminEngine` performs deterministic dataset preparation:
 
 1. Build polygon admin dataset (`sweden_admin.json`) via `build_admin_dataset`
-2. Extract relation hierarchy (`admin_nodes.json`, `admin_edges.json`)
+2. Project a dataset-scoped hierarchy (`admin_nodes.json`, `admin_edges.json`)
 3. Render hierarchy text (`admin_tree.txt`)
 4. Export spatial binary layer (`sweden_admin.bin` + `SE_feature_meta_by_index.json`)
 5. Export semantic layer (`sweden_admin_semantic.json`)

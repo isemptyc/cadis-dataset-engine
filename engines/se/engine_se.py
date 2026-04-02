@@ -1,13 +1,13 @@
 from pathlib import Path
 import json
 import shutil
+from datetime import datetime, timezone
 
 from base import DatasetBuildEngineBase
 from dataset import (
     AdminLevelPolicy,
     AdminProfile,
     build_admin_dataset,
-    extract_admin_hierarchy,
     render_admin_tree,
 )
 from ffsf import export_cadis_to_ffsf
@@ -94,22 +94,7 @@ class SwedenAdminEngine(DatasetBuildEngineBase):
             )
 
         if not self._admin_hierarchy_path.exists():
-            nodes_path = self._work_dir / "admin_nodes.json"
-            edges_path = self._work_dir / "admin_edges.json"
-
-            if not nodes_path.exists() or not edges_path.exists():
-                extract_admin_hierarchy(
-                    pbf_path=osm_pbf_path,
-                    output_dir=self._work_dir,
-                    name_keys=SE_PROFILE.name_keys,
-                    target_levels=self.LEVELS,
-                )
-
-            render_admin_tree(
-                nodes_path=nodes_path,
-                edges_path=edges_path,
-                output_path=self._admin_hierarchy_path,
-            )
+            self._write_dataset_scoped_hierarchy_artifacts()
 
         if not self._ffsf_dataset_path.exists() or not self._ffsf_meta_path.exists():
             if not self._admin_dataset_path.exists():
@@ -188,6 +173,86 @@ class SwedenAdminEngine(DatasetBuildEngineBase):
                     }
                 )
         return nodes
+
+    def _write_dataset_scoped_hierarchy_artifacts(self) -> None:
+        dataset_nodes = self._load_admin_dataset_nodes()
+        level_counts: dict[int, int] = {}
+        hierarchy_nodes: list[dict] = []
+        hierarchy_edges: list[dict] = []
+
+        for node in dataset_nodes:
+            node_id = node["id"]
+            raw_id = f"{self.COUNTRY_ISO.lower()}_{node_id}"
+            level = node["level"]
+            parent_id = node.get("parent_id")
+            raw_parent_id = None
+            if isinstance(parent_id, str) and parent_id:
+                raw_parent_id = f"{self.COUNTRY_ISO.lower()}_{parent_id}"
+
+            hierarchy_nodes.append(
+                {
+                    "id": raw_id,
+                    "osm_id": raw_id[3:] if raw_id.startswith(f"{self.COUNTRY_ISO.lower()}_") else raw_id,
+                    "name": node["name"],
+                    "admin_level": level,
+                    "tags": {
+                        "boundary": "administrative",
+                        "admin_level": str(level),
+                    },
+                }
+            )
+            level_counts[level] = level_counts.get(level, 0) + 1
+
+            if raw_parent_id is not None:
+                hierarchy_edges.append(
+                    {
+                        "parent": raw_parent_id,
+                        "child": raw_id,
+                        "method": "dataset_parent",
+                        "confidence": 1.0,
+                    }
+                )
+
+        nodes_path = self._work_dir / "admin_nodes.json"
+        edges_path = self._work_dir / "admin_edges.json"
+        report_path = self._work_dir / "admin_report.json"
+
+        nodes_path.write_text(
+            json.dumps(hierarchy_nodes, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        edges_path.write_text(
+            json.dumps(hierarchy_edges, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        report_path.write_text(
+            json.dumps(
+                {
+                    "generated_at": datetime.now(timezone.utc)
+                    .replace(microsecond=0)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "country_geometry_filter_applied": False,
+                    "dataset_scope_projection_applied": True,
+                    "node_count": len(hierarchy_nodes),
+                    "edge_count": len(hierarchy_edges),
+                    "unresolved_is_in_edges": 0,
+                    "admin_level_distribution": {
+                        str(level): count for level, count in sorted(level_counts.items())
+                    },
+                    "unresolved_samples": [],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        render_admin_tree(
+            nodes_path=nodes_path,
+            edges_path=edges_path,
+            output_path=self._admin_hierarchy_path,
+        )
 
     def _load_tree_parent_candidates(self) -> dict[str, list[dict]]:
         hierarchy_nodes = self._load_admin_hierarchy(self._admin_hierarchy_path)
