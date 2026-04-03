@@ -48,14 +48,18 @@ class DatasetBuildEngineBase(ABC):
         *,
         osm_pbf_path: str | Path,
         work_dir: Path | None = None,
+        country_geometry_path: str | Path | None = None,
     ) -> Path:
         """
         One-time dataset initialization entrypoint.
         """
-        engine = cls(
-            osm_pbf_path=osm_pbf_path,
-            work_dir=work_dir,
-        )
+        init_kwargs = {
+            "osm_pbf_path": osm_pbf_path,
+            "work_dir": work_dir,
+        }
+        if country_geometry_path is not None:
+            init_kwargs["country_geometry_path"] = country_geometry_path
+        engine = cls(**init_kwargs)
         engine._write_dataset_build_manifest()
         return Path(engine._work_dir)
 

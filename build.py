@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from engines.dk.engine_dk import DenmarkAdminEngine
 from engines.gb.engine_gb import GreatBritainAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
 from engines.jp.engine_jp import JapanAdminEngine
@@ -185,6 +186,19 @@ def main() -> int:
         NorwayAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "dk":
+        DenmarkAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
         )
         _write_source_osm_identity(
             work_dir=work_dir,
