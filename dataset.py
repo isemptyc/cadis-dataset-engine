@@ -103,6 +103,8 @@ def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional
         if not match:
             continue
         lang = match.group(1).lower()
+        if profile.multilingual_allowed_languages and lang not in profile.multilingual_allowed_languages:
+            continue
         value = _normalize_alias_value(tags.get(key))
         if value is None:
             continue
@@ -111,6 +113,8 @@ def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional
     for source_key, lang in profile.multilingual_extra_name_tags:
         lang_key = str(lang).strip().lower()
         if not _NAME_LANG_TAG_RE.match(f"name:{lang_key}"):
+            continue
+        if profile.multilingual_allowed_languages and lang_key not in profile.multilingual_allowed_languages:
             continue
         value = _normalize_alias_value(tags.get(source_key))
         if value is None:
@@ -170,6 +174,7 @@ class AdminProfile:
     multilingual_names_enabled: bool = False
     multilingual_extra_name_tags: tuple[tuple[str, str], ...] = field(default_factory=tuple)
     multilingual_language_preference: tuple[str, ...] = field(default_factory=tuple)
+    multilingual_allowed_languages: tuple[str, ...] = field(default_factory=tuple)
 
 
 def _resolve_level_policy(
