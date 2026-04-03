@@ -80,8 +80,18 @@ def _pick_name(tags: dict, name_keys: Iterable[str]) -> Optional[str]:
     return None
 
 
-def _should_apply_country_filter(pbf_path: str) -> bool:
-    # Heuristic:
+def _should_apply_country_filter(
+    pbf_path: str,
+    *,
+    country_geometry_path: Optional[Path] = None,
+) -> bool:
+    # Explicit boundary input is treated as an operator opt-in.
+    # When present, apply the filter even for single-country extracts so
+    # exporters and dataset builders can carry exact country-scope truth.
+    if country_geometry_path is not None:
+        return True
+
+    # Heuristic fallback:
     # Geofabrik single-country dumps typically end with "-latest.osm.pbf".
     # Custom/combined regional extracts usually do not.
     return not Path(pbf_path).name.endswith("-latest.osm.pbf")
@@ -168,7 +178,11 @@ def extract_admin_hierarchy(
             raise ValueError("target_levels must not be empty when provided.")
 
     apply_country_filter = (
-        country_geometry_path is not None and _should_apply_country_filter(pbf_path)
+        country_geometry_path is not None
+        and _should_apply_country_filter(
+            pbf_path,
+            country_geometry_path=Path(country_geometry_path),
+        )
     )
 
     if country_geometry_path is not None and not apply_country_filter:
@@ -730,7 +744,11 @@ def build_admin_dataset(
     del extractor.data 
 
     apply_country_filter = (
-        country_geometry_path is not None and _should_apply_country_filter(pbf_path)
+        country_geometry_path is not None
+        and _should_apply_country_filter(
+            pbf_path,
+            country_geometry_path=Path(country_geometry_path),
+        )
     )
     if country_geometry_path is not None and not apply_country_filter:
         print("Country geometry filter skipped (single-country PBF heuristic).")

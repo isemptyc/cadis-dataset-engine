@@ -1,5 +1,6 @@
 """Country dataset engines for cadis-dataset-engine."""
 
+from .be import BelgiumAdminEngine
 from .dk import DenmarkAdminEngine
 from .gb import GreatBritainAdminEngine
 from .it import ItalyAdminEngine
@@ -10,6 +11,7 @@ from .se import SwedenAdminEngine
 from .tw import TaiwanAdminEngine
 
 __all__ = [
+    "BelgiumAdminEngine",
     "DenmarkAdminEngine",
     "GreatBritainAdminEngine",
     "ItalyAdminEngine",
