@@ -405,6 +405,7 @@ class BelgiumAdminEngine(DatasetBuildEngineBase):
                     "feature_id": node["id"],
                     "level": node["level"],
                     "name": node["name"],
+                    "names": node.get("names") if isinstance(node.get("names"), dict) else None,
                     "parent_id": supplemented_parents[node["id"]],
                 }
             )
@@ -417,20 +418,27 @@ class BelgiumAdminEngine(DatasetBuildEngineBase):
         if not isinstance(nodes_raw, dict):
             return out
         for feature_id, row in nodes_raw.items():
-            if not isinstance(row, list) or len(row) != 3:
+            if not isinstance(row, list) or len(row) not in {3, 4}:
                 continue
-            level, name, parent_id = row
+            if len(row) == 3:
+                level, name, parent_id = row
+                names = None
+            else:
+                level, name, parent_id, names = row
             if not isinstance(level, int):
                 continue
             if not isinstance(name, str) or not name:
                 continue
             if parent_id is not None and not isinstance(parent_id, str):
                 continue
+            if names is not None and not isinstance(names, dict):
+                continue
             out.append(
                 {
                     "id": feature_id,
                     "level": level,
                     "name": name,
+                    "names": names if isinstance(names, dict) and names else None,
                     "parent_id": parent_id,
                 }
             )

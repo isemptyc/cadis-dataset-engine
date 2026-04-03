@@ -142,11 +142,14 @@ def export_admin_semantic_dataset(
       - level (number)
       - name (string)
       - parent_id (string or None)
+      - names (optional dict[str, str])
 
     Output guarantees:
     - Top-level structure matches the Administrative Semantic Dataset v1.0
     - nodes table is a flat dict keyed by feature_id
-    - values are fixed-position arrays: [level, name, parent_id]
+    - values are fixed-position arrays:
+      - legacy: [level, name, parent_id]
+      - multilingual_v1: [level, name, parent_id, names]
 
     Failure conditions:
     - Duplicate feature_id entries
@@ -167,7 +170,11 @@ def export_admin_semantic_dataset(
         level = _require_field(node, "level")
         name = _require_field(node, "name")
         parent_id = node.get("parent_id")
-        serialized_nodes[feature_id] = [level, name, parent_id]
+        names = node.get("names")
+        if isinstance(names, dict) and names:
+            serialized_nodes[feature_id] = [level, name, parent_id, names]
+        else:
+            serialized_nodes[feature_id] = [level, name, parent_id]
 
     payload = {
         "version": version,
