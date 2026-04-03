@@ -262,6 +262,12 @@ Operationally, this means:
 When the source PBF is already country-specific, `apply_country_filter=False` is usually fine.
 When using combined extracts or when relation hierarchy contamination is a risk, Natural Earth country geometry (or an equivalent country boundary source) should be treated as part of the standard probe toolkit rather than an optional afterthought.
 
+Important qualification:
+
+- a single-country extract does not guarantee a clean administrative relation graph
+- border-adjacent or foreign features can still leak into probes or builds even when the file name suggests a country-only scope
+- if that happens, treat the country-specific extract as a strong hint, not absolute proof that no country scoping work is needed
+
 #### When Natural Earth Is Needed
 
 Natural Earth is needed when the engine requires explicit country-scope truth that cannot be trusted to emerge from the OSM input alone.
@@ -302,6 +308,14 @@ Important caution:
 - Natural Earth is a boundary reference, not a guarantee of semantic correctness for every administrative feature
 - before enabling export-time country-scope metadata, verify that the chosen boundary source does not wrongly exclude valid features such as islands, enclaves, lagoon municipalities, or coastal admin units
 - if the boundary source causes false exclusions, keep the engine unscoped until a better boundary source or country-specific scoping rule is available
+
+Practical fallback when scoped export is not trustworthy:
+
+- keep the engine unscoped at export time
+- generate hierarchy artifacts from the finalized dataset rather than from the polluted raw relation graph
+- explicitly prune known foreign leakage during engine build if the contamination is sparse and well understood
+
+This is preferable to emitting `country_scope_flag` from an inaccurate boundary source and silently excluding legitimate in-country features.
 
 ### 3. Derive Runtime Policy from the Probe Artifacts
 
@@ -539,6 +553,11 @@ Use `repair.json` when the source data has recurring holes or ambiguities that n
 
 Do not use semantic overlays to compensate for missing structural logic. Hierarchy and repair layers are the structural tools; overlays are not.
 
+Additional practical rule:
+
+- if the raw hierarchy probe is polluted by cross-country relations, it is valid to derive `hierarchy.json` from the finalized dataset artifact set instead of the raw probe output
+- the goal is deterministic parent reconstruction for the released dataset, not loyalty to a contaminated intermediate graph
+
 ### 10. Use Semantic Overlays Only for Deterministic Post-Processing
 
 Optional overlay files are declared in `runtime_policy.json` and loaded by `cadis/runtime/dataset/loader.py`.
@@ -633,6 +652,11 @@ Validate both:
 
 This development validation step is necessary but not sufficient for release. Promotion requires the stronger dataset-wide gates defined in "Promotion Readiness Gates."
 
+Operational note:
+
+- evaluation failures caused by insufficient random sampling budget are not automatically dataset failures
+- if the harness cannot obtain the intended inside/outside corpus, raise the sampler attempt cap and rerun before concluding that runtime behavior is defective
+
 ## What Usually Goes Wrong
 
 In practice, country integrations usually fail for these reasons:
@@ -653,6 +677,7 @@ Before promoting a country dataset, confirm all of the following:
 - finalized hierarchy satisfies all structural invariants
 - `allowed_levels`, `allowed_shapes`, and repair rules were derived from probe evidence rather than assumption
 - mass lookup sample passes 100%
+- the evaluation harness can reliably produce the intended sample corpus without starving on inside-point generation
 - repeated runs of the same lookup corpus produce identical output
 - no nondeterministic repair anchors exist
 - staged dataset behaves correctly from the real cache layout
