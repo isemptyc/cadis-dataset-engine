@@ -1,8 +1,9 @@
 import json
+import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
 """
@@ -80,6 +81,63 @@ def _pick_name(tags: dict, name_keys: Iterable[str]) -> Optional[str]:
     return None
 
 
+_NAME_LANG_TAG_RE = re.compile(r"^name:([A-Za-z]{2})$")
+
+
+def _normalize_alias_value(value: object) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    return normalized
+
+
+def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional[dict[str, str]]:
+    if not profile.multilingual_names_enabled:
+        return None
+
+    candidates: list[tuple[str, str]] = []
+    for key in sorted(tags.keys()):
+        match = _NAME_LANG_TAG_RE.match(key)
+        if not match:
+            continue
+        lang = match.group(1).lower()
+        value = _normalize_alias_value(tags.get(key))
+        if value is None:
+            continue
+        candidates.append((lang, value))
+
+    for source_key, lang in profile.multilingual_extra_name_tags:
+        lang_key = str(lang).strip().lower()
+        if not _NAME_LANG_TAG_RE.match(f"name:{lang_key}"):
+            continue
+        value = _normalize_alias_value(tags.get(source_key))
+        if value is None:
+            continue
+        candidates.append((lang_key, value))
+
+    if not candidates:
+        return None
+
+    preferred_lang_order = {
+        lang: idx for idx, lang in enumerate(profile.multilingual_language_preference)
+    }
+    candidates.sort(key=lambda item: (preferred_lang_order.get(item[0], len(preferred_lang_order)), item[0]))
+
+    names: dict[str, str] = {}
+    seen_values: set[str] = set()
+    for lang, value in candidates:
+        if value in seen_values:
+            continue
+        if lang in names:
+            continue
+        names[lang] = value
+        seen_values.add(value)
+
+    return names or None
+
+
 def _should_apply_country_filter(
     pbf_path: str,
     *,
@@ -109,6 +167,9 @@ class AdminProfile:
     name_keys: tuple[str, ...]
     level_policies: dict[int, AdminLevelPolicy]
     parent_fallback: bool
+    multilingual_names_enabled: bool = False
+    multilingual_extra_name_tags: tuple[tuple[str, str], ...] = field(default_factory=tuple)
+    multilingual_language_preference: tuple[str, ...] = field(default_factory=tuple)
 
 
 def _resolve_level_policy(
@@ -603,6 +664,7 @@ class AdminExtractor(osmium.SimpleHandler):
                 "osm_id": f"r{rel_id}",
                 "level": lvl,
                 "name": _pick_name(dict(a.tags), self.profile.name_keys),
+                "names": _extract_multilingual_names(dict(a.tags), self.profile),
                 "wkb": wkb
             })
 
@@ -666,6 +728,8 @@ def serialize_output(gdf, levels, profile, meta_info):
                 "level": lvl,
                 "bbox": row['bbox'],
             }
+            if isinstance(row.get("names"), dict) and row["names"]:
+                item["names"] = row["names"]
             # 性能修正：根據 profile 決定是否匯出龐大的幾何數據
             if getattr(profile, 'export_geometry', True):
                 item["geometry"] = row['geometry'].__geo_interface__

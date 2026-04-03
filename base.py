@@ -34,6 +34,7 @@ class DatasetBuildEngineBase(ABC):
     BUILD_MANIFEST_PROFILE = "cadis.dataset.build"
     BUILD_MANIFEST_FILENAME = "dataset_build_manifest.json"
     RUNTIME_POLICY_FILENAME = "runtime_policy.json"
+    NAME_SCHEMA: str | None = None
 
     # ==================================================
     # lifecycle
@@ -210,6 +211,8 @@ class DatasetBuildEngineBase(ABC):
             "files": files_meta,
             "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         }
+        if isinstance(self.NAME_SCHEMA, str) and self.NAME_SCHEMA.strip():
+            payload["name_schema"] = self.NAME_SCHEMA.strip()
         out = self._dataset_build_manifest_path()
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return out

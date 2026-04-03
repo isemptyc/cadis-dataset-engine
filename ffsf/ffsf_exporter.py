@@ -206,6 +206,7 @@ def export_cadis_to_ffsf(
             "feature_id": feature_id,
             "level": feature.get("level"),
             "name": feature.get("name"),
+            "names": feature.get("names"),
             "parent_id": feature.get("parent"),
             "representative_point_exact": [rep_point.x, rep_point.y],
             "country_scope_flag": country_scope_flag,

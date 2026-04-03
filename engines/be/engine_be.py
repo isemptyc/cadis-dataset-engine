@@ -16,7 +16,7 @@ from ffsf.semantic_dataset_exporter import export_admin_semantic_dataset
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "belgium"
 
 BE_PROFILE = AdminProfile(
-    name_keys=("name:fr", "name:nl", "name:de", "name", "name:en", "official_name"),
+    name_keys=("name", "name:nl", "name:fr", "name:de", "name:en", "official_name"),
     level_policies={
         4: AdminLevelPolicy(
             simplify=True,
@@ -38,12 +38,15 @@ BE_PROFILE = AdminProfile(
         ),
     },
     parent_fallback=False,
+    multilingual_names_enabled=True,
+    multilingual_language_preference=("nl", "fr", "de", "en"),
 )
 
 
 class BelgiumAdminEngine(DatasetBuildEngineBase):
     ENGINE = "be_admin"
     VERSION = "v1.0"
+    NAME_SCHEMA = "multilingual_v1"
 
     LEVELS = [4, 6, 8]
     ALLOWED_SHAPES = {
@@ -262,6 +265,7 @@ class BelgiumAdminEngine(DatasetBuildEngineBase):
                         "id": self._normalize_runtime_feature_id(feature_id),
                         "level": level,
                         "name": name,
+                        "names": row.get("names") if isinstance(row.get("names"), dict) else None,
                         "parent_id": self._normalize_runtime_feature_id(parent_id),
                     }
                 )
@@ -287,6 +291,7 @@ class BelgiumAdminEngine(DatasetBuildEngineBase):
                     "id": raw_id,
                     "osm_id": raw_id[3:] if raw_id.startswith(f"{self.COUNTRY_ISO.lower()}_") else raw_id,
                     "name": node["name"],
+                    "names": node["names"],
                     "admin_level": level,
                     "tags": {
                         "boundary": "administrative",
