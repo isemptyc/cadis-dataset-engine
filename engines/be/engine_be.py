@@ -39,7 +39,6 @@ BE_PROFILE = AdminProfile(
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
-    multilingual_language_preference=("nl", "fr", "de", "en"),
     multilingual_allowed_languages=("nl", "fr", "de", "en"),
 )
 

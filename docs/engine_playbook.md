@@ -160,9 +160,37 @@ If any of these conditions fail, the dataset may still be useful for development
 
 ## Creation Procedure
 
+### Step 0: Data Observation and Analysis
+
+Before defining any runtime policy, analyze the source data to understand its structural and semantic characteristics.
+
+This step is exploratory and advisory. It does not produce runtime artifacts and must not directly define dataset behavior.
+
+Its purpose is to provide evidence for later policy decisions.
+
+#### Step 0.1: Multilingual Alias Analysis
+
+Use the `derive_multilingual_policy()` tool to analyze the distribution of `name:<lang>` tags in the source PBF.
+
+This step helps identify:
+
+- which languages are structurally present
+- which tags are high-signal vs noise
+- potential cross-border contamination or mapper artifacts
+
+Important:
+
+- this analysis is observational only
+- its output must not be used directly during dataset build
+- final language selection must be explicitly declared in the engine
+
+Multilingual policy is a design decision, not a derived artifact.
+
 ### 1. Probe the Country's Administrative Hierarchy First
 
-The first real step is not writing `runtime_policy.json`. It is generating the evidence needed to design it.
+This is the first step that produces structural evidence for runtime policy.
+
+Unlike Step 0, which is advisory, this step defines the basis for structural contracts such as levels, shapes, and hierarchy reconstruction.
 
 A practical probe step looks like this:
 
@@ -564,6 +592,28 @@ A valid dataset should:
 - exclude low-frequency or incidental tags
 - produce consistent results across rebuilds
 - avoid expanding into a full multilingual enumeration
+
+#### 5.3 Practical Experience: Lessons from `derive_multilingual_policy`
+
+Based on practical application across multiple European and Asian engines, keep these "gotchas" in mind when using the derivation tool:
+
+##### 1. The Geofabrik "Leakage" Problem
+Geofabrik country extracts are often "rectangular" (bbox-based) and contain administrative relations from neighboring countries. 
+- **Gotcha**: A Belgium extract may contain French departments that have `name:ru` (Russian) translations added by bots.
+- **Action**: Always review the derived output. If the tool suggests `ru` for Belgium, it's a data artifact of the extract's neighbors, not a requirement for the dataset.
+
+##### 2. Sparse Metadata at Lower Levels
+Administrative levels 9 and 10 often have much higher feature counts but much lower translation coverage than levels 2 or 4.
+- **Gotcha**: If you calculate frequency relative to *total features*, a secondary official language (like German in Belgium) might fall below the 10% threshold because it is only well-represented on Admin 4/6/8 features.
+- **Action**: The tool now calculates frequency relative to "features with at least one translation" to mitigate this, but manual verification of "official" secondary languages is still recommended.
+
+###### 3. Multi-part Language Tags (Dashed)
+OSM uses `name:zh-Hant` for Traditional Chinese and `name:zh-Hans` for Simplified Chinese.
+- **Gotcha**: Simple 2-letter regex lookups will miss these. The extraction logic must explicitly handle `name:` prefixes and dashed subtags.
+
+##### 4. Explicit Ownership Over Auto-magic
+The derivation tool is a **helper for observation**, not a build-time decision maker.
+- **Constraint**: Every derived language set MUST be explicitly hardcoded into the engine's `AdminProfile`. Do not rely on automated discovery during the build. This ensures that the dataset's semantic behavior is reviewable, stable, and traceable in the source code.
 
 ### 6. Normalize the Source into Cadis Runtime Artifacts
 

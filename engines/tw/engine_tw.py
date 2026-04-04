@@ -54,6 +54,8 @@ TW_PROFILE = AdminProfile(
         ),
     },
     parent_fallback=False,
+    multilingual_names_enabled=True,
+    multilingual_allowed_languages=("zh-Hant", "en"),
 )
 
 # ==================================================
@@ -63,6 +65,7 @@ TW_PROFILE = AdminProfile(
 class TaiwanAdminEngine(DatasetBuildEngineBase):
     ENGINE = "taiwan_admin"
     VERSION = "v2.0"
+    NAME_SCHEMA = "multilingual_v1"
 
     """
     Levels are fixed to [4, 7, 8] and represent the only semantically meaningful
@@ -167,6 +170,7 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
                     "feature_id": n["id"],
                     "level": n["level"],
                     "name": n["name"],
+                    "names": n.get("names") if isinstance(n.get("names"), dict) else None,
                     "parent_id": n.get("parent_id"),
                 }
                 for n in hierarchy_nodes
@@ -203,20 +207,27 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
         if not isinstance(nodes_raw, dict):
             return out
         for feature_id, row in nodes_raw.items():
-            if not isinstance(row, list) or len(row) != 3:
+            if not isinstance(row, list) or len(row) not in {3, 4}:
                 continue
-            level, name, parent_id = row
+            if len(row) == 3:
+                level, name, parent_id = row
+                names = None
+            else:
+                level, name, parent_id, names = row
             if not isinstance(level, int):
                 continue
             if not isinstance(name, str) or not name:
                 continue
             if parent_id is not None and not isinstance(parent_id, str):
                 continue
+            if names is not None and not isinstance(names, dict):
+                continue
             out.append(
                 {
                     "id": feature_id,
                     "level": level,
                     "name": name,
+                    "names": names if isinstance(names, dict) and names else None,
                     "parent_id": parent_id,
                 }
             )

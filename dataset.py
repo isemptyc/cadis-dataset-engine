@@ -1,10 +1,10 @@
 import json
 import re
-from collections import defaultdict
+from collections import defaultdict, Counter
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Set, Tuple
 
 """
 Dataset Design Note: Polygon vs Hierarchy Consistency
@@ -101,6 +101,13 @@ def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional
     for key in sorted(tags.keys()):
         match = _NAME_LANG_TAG_RE.match(key)
         if not match:
+            # Also support zh-Hant style if allowed
+            if key.startswith("name:") and profile.multilingual_allowed_languages:
+                lang = key[5:].lower()
+                if lang in profile.multilingual_allowed_languages:
+                    value = _normalize_alias_value(tags.get(key))
+                    if value is not None:
+                        candidates.append((lang, value))
             continue
         lang = match.group(1).lower()
         if profile.multilingual_allowed_languages and lang not in profile.multilingual_allowed_languages:
@@ -112,8 +119,6 @@ def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional
 
     for source_key, lang in profile.multilingual_extra_name_tags:
         lang_key = str(lang).strip().lower()
-        if not _NAME_LANG_TAG_RE.match(f"name:{lang_key}"):
-            continue
         if profile.multilingual_allowed_languages and lang_key not in profile.multilingual_allowed_languages:
             continue
         value = _normalize_alias_value(tags.get(source_key))
@@ -124,10 +129,8 @@ def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional
     if not candidates:
         return None
 
-    preferred_lang_order = {
-        lang: idx for idx, lang in enumerate(profile.multilingual_language_preference)
-    }
-    candidates.sort(key=lambda item: (preferred_lang_order.get(item[0], len(preferred_lang_order)), item[0]))
+    # Deterministic alphabetical sort of language codes
+    candidates.sort(key=lambda item: item[0])
 
     names: dict[str, str] = {}
     seen_values: set[str] = set()
@@ -173,7 +176,6 @@ class AdminProfile:
     parent_fallback: bool
     multilingual_names_enabled: bool = False
     multilingual_extra_name_tags: tuple[tuple[str, str], ...] = field(default_factory=tuple)
-    multilingual_language_preference: tuple[str, ...] = field(default_factory=tuple)
     multilingual_allowed_languages: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -199,6 +201,68 @@ def _resolve_parent_resolution(
     if fallback_parent_resolution is not None:
         return fallback_parent_resolution
     return None
+
+
+# ==================================================
+# multilingual policy derivation
+# ==================================================
+
+def derive_multilingual_policy(
+    pbf_path: str,
+    levels: Iterable[int],
+    filter_threshold: float = 0.1,
+    max_languages: int = 5,
+) -> Tuple[str, ...]:
+    """
+    Derive a deterministic, bounded multilingual alias extraction policy
+    based on the frequency distribution of name:<lang> tags in the source data.
+    """
+    import osmium
+    target_levels = set(levels)
+
+    class AdminTagScanner(osmium.SimpleHandler):
+        def __init__(self):
+            super().__init__()
+            self.total_admin = 0
+            self.lang_counts = Counter()
+
+        def relation(self, r):
+            if r.tags.get("boundary") == "administrative" and "admin_level" in r.tags:
+                self.total_admin += 1
+                for tag in r.tags:
+                    if tag.k.startswith("name:"):
+                        # Consistent with _NAME_LANG_TAG_RE: name:xx
+                        # but also support common subtags like zh-hant
+                        if len(tag.k) == 7:  # name:xx
+                            lang = tag.k[5:].lower()
+                            self.lang_counts[lang] += 1
+                        elif "-" in tag.k:
+                            lang = tag.k[5:].lower()
+                            self.lang_counts[lang] += 1
+
+    scanner = AdminTagScanner()
+    scanner.apply_file(pbf_path)
+
+    total = scanner.total_admin
+    # Use total relations that have at least one name:lang as the denominator
+    # to avoid noise from sparse level-9/10 features drowning out signal.
+    # We find the max frequency as a proxy for 'translated features count'.
+    denominator = max(scanner.lang_counts.values()) if scanner.lang_counts else total
+    
+    if denominator == 0:
+        return ()
+
+    candidates = []
+    for lang, count in scanner.lang_counts.items():
+        if count / denominator >= filter_threshold:
+            candidates.append((count, lang))
+
+    # Sort by count descending, then lang alphabetical to be deterministic
+    candidates.sort(key=lambda x: (-x[0], x[1]))
+
+    # Take top-K and return as sorted alphabet codes for stable selection
+    top_langs = [lang for count, lang in candidates[:max_languages]]
+    return tuple(sorted(top_langs))
 
 
 # ==================================================
@@ -786,8 +850,10 @@ def build_admin_dataset(
 
     This function must not infer caller intent. All non-trivial behavior must be
     traceable to the provided AdminProfile or explicit fallback parameters.
-    """        
+    """
     import numpy as np
+
+
     """
     Entry Point: 協調整個 ETL 流程
     """

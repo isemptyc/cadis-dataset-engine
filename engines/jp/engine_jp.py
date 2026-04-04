@@ -51,6 +51,8 @@ JP_PROFILE = AdminProfile(
         ),
     },
     parent_fallback=False,
+    multilingual_names_enabled=True,
+    multilingual_allowed_languages=("ja", "en"),
 )
 
 
@@ -61,6 +63,7 @@ JP_PROFILE = AdminProfile(
 class JapanAdminEngine(DatasetBuildEngineBase):
     ENGINE = "japan_admin"
     VERSION = "v2.0"
+    NAME_SCHEMA = "multilingual_v1"
 
     """
     Levels are fixed to [3, 4, 7] and represent the only semantically meaningful
