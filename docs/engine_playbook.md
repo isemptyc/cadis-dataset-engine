@@ -492,6 +492,79 @@ Examples:
 This narrower alias set is a hard design rule, not a convenience preference.
 The goal is to keep alias metadata useful for recall without turning the dataset into an unconstrained dump of multilingual OSM tags.
 
+### 5.2 Multilingual Alias Extraction Policy (Data-Derived & Bounded)
+
+Cadis multilingual naming is a **dataset-level normalization problem**, not a completeness problem.
+
+The goal is not to capture all possible `name:<lang>` values, but to produce a **deterministic, bounded, high-signal alias set** derived from OSM source data.
+
+#### Core Model
+
+Alias extraction follows a three-step process:
+
+1. **Derive**
+   - Scan the dataset for all `name:<lang>` tags across administrative entities
+   - Compute frequency distribution of each language tag
+
+2. **Filter**
+   - Remove low-signal or incidental tags using a deterministic rule
+   - Default strategy: frequency-based threshold (e.g. ≥ 10%)
+
+3. **Bound**
+   - Limit the final alias set to a small number of languages
+   - Default strategy: select top-K by frequency (e.g. K = 5)
+
+This defines a:
+
+> deterministic projection from raw OSM tags → bounded alias set
+
+#### Design Constraints
+
+- The dataset is **not a multilingual dictionary**
+- The alias set must remain **small, stable, and high-signal**
+- Query mismatch is acceptable and handled at the consumer layer (e.g. Eona / Agent)
+
+#### Heuristic vs Invariant
+
+The following are **default heuristics**, not global invariants:
+
+- frequency threshold (e.g. 10%)
+- maximum number of languages (e.g. 5)
+
+These values:
+
+- are used to extract signal from noisy OSM data
+- must remain deterministic
+- may be adjusted if a country's data distribution requires it
+
+The actual invariant is:
+
+> the alias set must be deterministically derived from OSM source data
+
+—not that a specific threshold or bound must always apply.
+
+#### What is Not Allowed
+
+- manual selection of languages based on perceived importance
+- global language policies applied uniformly across countries
+- unbounded inclusion of all `name:<lang>` tags
+- runtime-level language interpretation or selection
+
+#### Relationship to Canonical Naming
+
+- `name` remains the canonical deterministic label
+- `names` is a bounded alias projection derived from OSM tags
+- runtime must treat `names` as opaque metadata
+
+#### Practical Outcome
+
+A valid dataset should:
+
+- include only structurally present languages
+- exclude low-frequency or incidental tags
+- produce consistent results across rebuilds
+- avoid expanding into a full multilingual enumeration
+
 ### 6. Normalize the Source into Cadis Runtime Artifacts
 
 Transform the raw source into the files Cadis can load.
