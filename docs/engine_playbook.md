@@ -442,6 +442,7 @@ Pick the geographic and naming sources that will define:
 - polygon boundaries
 - stable identifiers
 - canonical display names
+- multilingual query aliases when the dataset exports them
 - parent-child administrative relationships
 - any explicit exception rules
 
@@ -456,6 +457,40 @@ The main difficulty is deciding how the country's real administrative system sho
 Geometry indexing is downstream of those choices. If taxonomy alignment is weak, a high-quality spatial index does not rescue the dataset.
 
 So when choosing source data, prioritize sources that support semantic consistency and hierarchy normalization first. Geometry richness matters, but it is not the primary modeling problem.
+
+### 5.1 Canonical Naming vs Multilingual Aliases
+
+Cadis datasets may export multilingual naming metadata, but runtime remains language-agnostic.
+
+When a dataset uses the multilingual naming contract:
+
+- `name` is the canonical deterministic label
+- `names` is auxiliary alias metadata for query recall
+- runtime must pass `names` through unchanged
+- runtime must not select language, reorder aliases, or depend on locale
+
+Country engines must define canonical naming and alias extraction separately.
+
+Canonical naming policy:
+
+- is required for every engine
+- must be deterministic
+- should prefer the dataset's intended local/default administrative label rather than a global language preference
+
+Alias extraction policy:
+
+- is optional
+- must be explicitly enabled by the engine
+- must use a country-specific narrower alias set rather than exporting every available `name:<lang>` tag
+
+Examples:
+
+- Belgium:
+  - canonical policy: `("name", "name:nl", "name:fr", "name:de", "name:en", "official_name")`
+  - alias set: `nl`, `fr`, `de`
+
+This narrower alias set is a hard design rule, not a convenience preference.
+The goal is to keep alias metadata useful for recall without turning the dataset into an unconstrained dump of multilingual OSM tags.
 
 ### 6. Normalize the Source into Cadis Runtime Artifacts
 
@@ -543,6 +578,12 @@ Cadis runtime expects files compatible with `FFSFSpatialIndexV3`. Every feature 
 
 If nearby/offshore behavior matters, include accurate country-scope geometry. Boundary quality directly affects fallback behavior.
 
+If the dataset uses multilingual naming:
+
+- `geometry_meta.json` should carry canonical `name`
+- optional `names` should contain only the engine's explicitly allowed alias set
+- alias export should follow the dataset's declared `name_schema`
+
 If runtime needs country-scope metadata in `geometry_meta.json`, compute that scope truth at export time from the original full-precision geometry using the external country boundary source. Do not derive country-scope inclusion later from reconstructed or quantized FFSF geometry.
 
 ### 9. Add Hierarchy and Repair Layers Only When They Add Deterministic Value
@@ -589,6 +630,17 @@ At minimum it should correctly represent:
 - `country_name`
 - `dataset_id`
 - `dataset_version`
+
+If the dataset exports multilingual naming metadata, the manifest should also declare:
+
+- `name_schema`
+
+Current schema:
+
+- `multilingual_v1`
+  - `name` is canonical
+  - `names` is optional alias metadata
+  - alias keys are representative metadata only and must not be treated as authoritative language guarantees
 
 If the dataset will be distributed through Cadis bootstrap/CDN flow, the manifest and checksums must also satisfy `cadis/cdn/bootstrap.py`.
 
