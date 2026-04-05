@@ -103,28 +103,48 @@ def _extract_multilingual_names(tags: dict, profile: "AdminProfile") -> Optional
         if not match:
             # Also support zh-Hant style if allowed
             if key.startswith("name:") and profile.multilingual_allowed_languages:
-                lang = key[5:].lower()
-                if lang in profile.multilingual_allowed_languages:
-                    value = _normalize_alias_value(tags.get(key))
-                    if value is not None:
-                        candidates.append((lang, value))
+                lang_lower = key[5:].lower()
+                for allowed in profile.multilingual_allowed_languages:
+                    if allowed.lower() == lang_lower:
+                        value = _normalize_alias_value(tags.get(key))
+                        if value is not None:
+                            candidates.append((allowed, value))
+                        break
             continue
-        lang = match.group(1).lower()
-        if profile.multilingual_allowed_languages and lang not in profile.multilingual_allowed_languages:
-            continue
+        lang_lower = match.group(1).lower()
+        matched_lang = lang_lower
+        if profile.multilingual_allowed_languages:
+            found = False
+            for allowed in profile.multilingual_allowed_languages:
+                if allowed.lower() == lang_lower:
+                    matched_lang = allowed
+                    found = True
+                    break
+            if not found:
+                continue
+
         value = _normalize_alias_value(tags.get(key))
         if value is None:
             continue
-        candidates.append((lang, value))
+        candidates.append((matched_lang, value))
 
     for source_key, lang in profile.multilingual_extra_name_tags:
-        lang_key = str(lang).strip().lower()
-        if profile.multilingual_allowed_languages and lang_key not in profile.multilingual_allowed_languages:
-            continue
+        lang_key_lower = str(lang).strip().lower()
+        matched_lang = str(lang).strip()
+        if profile.multilingual_allowed_languages:
+            found = False
+            for allowed in profile.multilingual_allowed_languages:
+                if allowed.lower() == lang_key_lower:
+                    matched_lang = allowed
+                    found = True
+                    break
+            if not found:
+                continue
+        
         value = _normalize_alias_value(tags.get(source_key))
         if value is None:
             continue
-        candidates.append((lang_key, value))
+        candidates.append((matched_lang, value))
 
     if not candidates:
         return None
