@@ -56,6 +56,10 @@ TW_PROFILE = AdminProfile(
     parent_fallback=False,
     multilingual_names_enabled=True,
     multilingual_allowed_languages=("zh-Hant", "en"),
+    multilingual_extra_name_tags=(
+        ("name:zh", "zh-Hant"),
+        ("name", "zh-Hant"),
+    ),
 )
 
 # ==================================================
