@@ -22,7 +22,12 @@ lookup systems.
 
 ## 3. Scope and Worldview
 
-The engine models the France administrative spine as:
+The engine models the France administrative spine present in the Geofabrik
+France extract. The initial release scope is metropolitan France plus Corsica;
+overseas territories should be handled as separate ISO entities or with a
+separate source decision before promotion.
+
+The administrative model is:
 
 - Level `4`: Region
 - Level `6`: Department
