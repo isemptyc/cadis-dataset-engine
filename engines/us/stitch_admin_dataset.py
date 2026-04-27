@@ -126,9 +126,14 @@ def _scan_relations(pbf_paths: list[Path], *, levels: list[int], profile: AdminP
     return collector
 
 
-def _source_fingerprint(*, pbf_paths: list[Path], levels: list[int]) -> str:
+def _source_fingerprint(
+    *,
+    pbf_paths: list[Path],
+    levels: list[int],
+    cache_namespace: str = "us-stitch-v2-path-independent",
+) -> str:
     payload = {
-        "cache_schema": "us-stitch-v2-path-independent",
+        "cache_schema": cache_namespace,
         "levels": levels,
         "pbf": [
             {
@@ -433,12 +438,20 @@ def build_stitched_admin_dataset(
     id_prefix: str,
     cache_dir: Path | None = None,
     allowed_level4_names: set[str] | None = None,
+    source_description: str | None = None,
+    cache_namespace: str = "us-stitch-v2-path-independent",
+    log_label: str | None = None,
 ) -> Path:
     start_time = datetime.now()
     levels = sorted({int(level) for level in levels})
     pbf_paths = [Path(path) for path in pbf_paths]
 
-    fingerprint = _source_fingerprint(pbf_paths=pbf_paths, levels=levels)
+    label = log_label or country_code
+    fingerprint = _source_fingerprint(
+        pbf_paths=pbf_paths,
+        levels=levels,
+        cache_namespace=cache_namespace,
+    )
     cache_root = Path(cache_dir) if cache_dir is not None else output_path.parent / "_stitch_cache"
 
     relations_cache_path = _cache_path(cache_root, fingerprint, "relations.pkl")
@@ -521,7 +534,7 @@ def build_stitched_admin_dataset(
         )
 
     if not rows:
-        raise RuntimeError("US stitched admin build produced no assembled polygons.")
+        raise RuntimeError(f"{label} stitched admin build produced no assembled polygons.")
 
     gdf = gpd.GeoDataFrame(pd.DataFrame(rows), geometry="geometry", crs="EPSG:4326")
     gdf, policy_stats = _apply_geometry_policy(gdf, levels=levels, profile=profile)
@@ -551,15 +564,16 @@ def build_stitched_admin_dataset(
         "country_name": country_name,
         "country_geometry_filter_applied": False,
         "levels": levels,
-        "source": "OpenStreetMap Geofabrik US state extracts stitched below area assembly",
+        "source": source_description
+        or "OpenStreetMap Geofabrik US state extracts stitched below area assembly",
         "source_extract_count": len(pbf_paths),
         "generated_at": datetime.utcnow().isoformat(),
         "processing_time_sec": (datetime.now() - start_time).total_seconds(),
     }
     final_json = serialize_output(gdf, levels, profile, meta_info)
-    for lvl, label in level_labels.items():
+    for lvl, level_label in level_labels.items():
         if str(lvl) in final_json["admin_by_level"]:
-            final_json[label] = final_json["admin_by_level"][str(lvl)]
+            final_json[level_label] = final_json["admin_by_level"][str(lvl)]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
@@ -597,6 +611,6 @@ def build_stitched_admin_dataset(
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[{datetime.now()}] US stitched admin dataset written: {output_path}", flush=True)
-    print(f"[{datetime.now()}] US stitched admin report written: {report_path}", flush=True)
+    print(f"[{datetime.now()}] {label} stitched admin dataset written: {output_path}", flush=True)
+    print(f"[{datetime.now()}] {label} stitched admin report written: {report_path}", flush=True)
     return output_path
