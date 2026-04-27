@@ -11,6 +11,7 @@ from dataset import (
     render_admin_tree,
 )
 from ffsf import export_cadis_to_ffsf
+from ffsf.runtime_hierarchy import build_runtime_hierarchy_payload
 from ffsf.semantic_dataset_exporter import export_admin_semantic_dataset
 
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "portugal"
@@ -396,7 +397,11 @@ class PortugalAdminEngine(DatasetBuildEngineBase):
 
         semantic_nodes = self._load_semantic_nodes()
         self._runtime_hierarchy_path.write_text(
-            json.dumps({"nodes": semantic_nodes}, ensure_ascii=False, indent=2),
+            json.dumps(
+                build_runtime_hierarchy_payload(semantic_nodes),
+                ensure_ascii=False,
+                indent=2,
+            ),
             encoding="utf-8",
         )
 
