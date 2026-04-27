@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Added explicit branch identity metadata for runtime `hierarchy.json` payloads.
+- Added `ffsf/runtime_hierarchy.py` to materialize deterministic `root_id`,
+  `branch_id`, `path_ids`, and `path_signature` fields from dataset-scoped
+  parent chains.
+- Updated the Portugal engine to emit branch identity metadata for newly built
+  hierarchy artifacts.
+- Preserved dataset semantics: geometry, runtime policy, node IDs, node levels,
+  names, and parent relationships are unchanged apart from the additional
+  branch identity fields.
+- Existing published datasets remain valid and do not require regeneration.
+
 ## License Change
 
 - Changed the repository source code license from MIT to Apache License 2.0.

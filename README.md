@@ -25,6 +25,45 @@ Published dataset releases are available in the `cadis-dataset` repository.
 
 ---
 
+## Runtime Artifact Contract
+
+Country engines materialize runtime release layers consumed by `cadis`:
+
+- `geometry.ffsf`
+- `geometry_meta.json`
+- `hierarchy.json`
+- `runtime_policy.json`
+
+`hierarchy.json` is an interpretation aid, not a dataset mutation surface. Its
+core semantic fields are:
+
+- `id`
+- `level`
+- `name`
+- `names`
+- `parent_id`
+
+For newly built capable datasets, `hierarchy.json` may also include explicit
+branch identity metadata:
+
+- top-level `branch_identity_version`
+- top-level `branch_identity`
+- per-node `root_id`
+- per-node `branch_id`
+- per-node `path_ids`
+- per-node `path_signature`
+
+These fields are derived deterministically from the dataset-scoped parent chain.
+They allow the runtime to validate hierarchy repair by graph/path membership
+instead of name inference. They do not alter geometry, administrative levels,
+names, parent relationships, or feature IDs.
+
+Older published datasets without branch identity metadata remain valid. Runtime
+support is capability-driven: Cadis uses explicit branch identity when present
+and valid, and otherwise falls back to the legacy guarded repair behavior.
+
+---
+
 ## Reproducibility Model
 
 To reproduce a dataset release:
@@ -152,6 +191,7 @@ cadis-dataset-engine/
 │       └── engine_<iso2>.py
 └── ffsf/
     ├── ffsf_exporter.py
+    ├── runtime_hierarchy.py
     └── semantic_dataset_exporter.py
 ```
 
