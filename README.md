@@ -112,6 +112,52 @@ Recommended Docker Desktop baseline for stable reproduction:
 
 The resulting release files must match the published manifest checksums in `cadis-dataset`.
 
+### United States Reproduction
+
+The United States dataset is a special build because the full-country OSM PBF is
+too large for the normal single-extract workflow. Reproduce it from the
+Geofabrik state/territory extract directory:
+
+```bash
+docker run --rm \
+  -v $(pwd):/app \
+  -v "/path/to/United States of America":/data/osm/us:ro \
+  -v /path/to/output:/data/out \
+  ghcr.io/isemptyc/cadis-dataset-engine:2026-02 \
+  --country us \
+  --version 0.2.4 \
+  --osm /data/osm/us \
+  --output /data/out
+```
+
+For US builds, `--osm` is a directory containing Geofabrik files such as
+`california-latest.osm.pbf`, `new-york-latest.osm.pbf`, and
+`puerto-rico-latest.osm.pbf`, not a single `.osm.pbf` file.
+
+The US engine performs a deterministic stitching stage before polygon assembly:
+
+```text
+state/territory PBF extracts
+→ relation/way/node union
+→ global admin polygon assembly
+→ standard Cadis runtime artifacts
+```
+
+To avoid repeating the expensive source scan, the engine may create an optional
+source-side cache:
+
+```text
+<United States of America>/_stitch_cache/<fingerprint>/
+├── relations.pkl
+├── ways.pkl
+└── nodes.pkl
+```
+
+This cache is derived entirely from the source PBF extracts and is not required
+for public reproducibility. If `_stitch_cache` is missing, the engine regenerates
+it from the PBF files. Deleting the cache is safe, but the next US build will be
+slow. The cache must not be committed to this repository.
+
 For strict reproducibility verification against pinned OSM identity metadata, add:
 
 ```bash

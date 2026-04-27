@@ -20,6 +20,7 @@ from engines.no.engine_no import NorwayAdminEngine
 from engines.pt.engine_pt import PortugalAdminEngine
 from engines.se.engine_se import SwedenAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
+from engines.us.engine_us import US_REGIONS, UnitedStatesAdminEngine
 import osmium
 
 
@@ -56,7 +57,12 @@ def _read_osm_replication_timestamp_utc(pbf_path: Path) -> str | None:
         reader.close()
 
 
-def _write_source_osm_identity(*, work_dir: Path, osm_pbf_path: Path) -> None:
+def _write_source_osm_identity(
+    *,
+    work_dir: Path,
+    osm_pbf_path: Path,
+    include_file_names: set[str] | None = None,
+) -> None:
     manifest_path = work_dir / "dataset_build_manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError(f"dataset build manifest missing: {manifest_path}")
@@ -66,11 +72,42 @@ def _write_source_osm_identity(*, work_dir: Path, osm_pbf_path: Path) -> None:
         raise ValueError(f"dataset build manifest must be a JSON object: {manifest_path}")
 
     osm_path = osm_pbf_path.resolve()
-    payload["source_osm"] = {
-        "file_name": osm_path.name,
-        "file_sha256": _sha256_file(osm_path),
-        "replication_timestamp_utc": _read_osm_replication_timestamp_utc(osm_path),
-    }
+    if osm_path.is_dir():
+        pbf_paths = sorted(osm_path.glob("*-latest.osm.pbf"))
+        if include_file_names is not None:
+            pbf_paths = [p for p in pbf_paths if p.name in include_file_names]
+        if not pbf_paths:
+            raise ValueError(f"OSM directory contains no *-latest.osm.pbf files: {osm_path}")
+        source_files = []
+        timestamps = []
+        for pbf in pbf_paths:
+            timestamp = _read_osm_replication_timestamp_utc(pbf)
+            if timestamp:
+                timestamps.append(timestamp)
+            source_files.append(
+                {
+                    "file_name": pbf.name,
+                    "file_sha256": _sha256_file(pbf),
+                    "replication_timestamp_utc": timestamp,
+                }
+            )
+        source_manifest = {
+            "directory_name": osm_path.name,
+            "files": source_files,
+        }
+        manifest_blob = json.dumps(source_manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        payload["source_osm"] = {
+            "file_name": osm_path.name,
+            "file_sha256": hashlib.sha256(manifest_blob).hexdigest(),
+            "replication_timestamp_utc": max(timestamps) if timestamps else None,
+            "source_manifest": source_manifest,
+        }
+    else:
+        payload["source_osm"] = {
+            "file_name": osm_path.name,
+            "file_sha256": _sha256_file(osm_path),
+            "replication_timestamp_utc": _read_osm_replication_timestamp_utc(osm_path),
+        }
     manifest_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
@@ -301,6 +338,20 @@ def main() -> int:
         _write_source_osm_identity(
             work_dir=work_dir,
             osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "us":
+        UnitedStatesAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+            include_file_names={f"{region}-latest.osm.pbf" for region in US_REGIONS},
         )
         print(work_dir)
         return 0
