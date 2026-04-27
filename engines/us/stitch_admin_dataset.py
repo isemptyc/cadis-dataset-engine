@@ -128,10 +128,11 @@ def _scan_relations(pbf_paths: list[Path], *, levels: list[int], profile: AdminP
 
 def _source_fingerprint(*, pbf_paths: list[Path], levels: list[int]) -> str:
     payload = {
+        "cache_schema": "us-stitch-v2-path-independent",
         "levels": levels,
         "pbf": [
             {
-                "path": str(path.resolve()),
+                "name": path.name,
                 "size": path.stat().st_size,
                 "mtime_ns": path.stat().st_mtime_ns,
             }
