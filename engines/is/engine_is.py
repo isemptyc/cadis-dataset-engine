@@ -409,7 +409,12 @@ class IcelandAdminEngine(DatasetBuildEngineBase):
             "shape_status": [
                 {
                     "levels": list(shape),
-                    "status": "ok" if shape == (5, 6, 9, 10) else "partial",
+                    "status": "ok" if shape in {
+                        (5, 6),
+                        (5, 6, 9),
+                        (5, 6, 10),
+                        (5, 6, 9, 10),
+                    } else "partial",
                 }
                 for shape in sorted(self.ALLOWED_SHAPES)
             ],
