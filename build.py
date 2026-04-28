@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
 from pathlib import Path
 
@@ -25,6 +26,8 @@ from engines.se.engine_se import SwedenAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
 from engines.us.engine_us import US_REGIONS, UnitedStatesAdminEngine
 import osmium
+
+IcelandAdminEngine = importlib.import_module("engines.is.engine_is").IcelandAdminEngine
 
 
 TW_1_0_0_OSM_SHA256 = "6b899702570a6554c5e2bcdd30bd569c5685943acea10c054eed34843e3c215a"
@@ -334,6 +337,19 @@ def main() -> int:
 
     if country == "fi":
         FinlandAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "is":
+        IcelandAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
