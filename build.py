@@ -19,6 +19,7 @@ from engines.jp.engine_jp import JapanAdminEngine
 from engines.kr.engine_kr import SouthKoreaAdminEngine
 from engines.nl.engine_nl import NetherlandsAdminEngine
 from engines.no.engine_no import NorwayAdminEngine
+from engines.nz.engine_nz import NewZealandAdminEngine
 from engines.pt.engine_pt import PortugalAdminEngine
 from engines.se.engine_se import SwedenAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
@@ -245,6 +246,19 @@ def main() -> int:
         NorwayAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "nz":
+        NewZealandAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
         )
         _write_source_osm_identity(
             work_dir=work_dir,
