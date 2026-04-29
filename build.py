@@ -10,6 +10,7 @@ from engines.at.engine_at import AustriaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.be.engine_be import BelgiumAdminEngine
 from engines.ca.engine_ca import CA_REGIONS, CanadaAdminEngine
+from engines.cz.engine_cz import CzechRepublicAdminEngine
 from engines.de.engine_de import GermanyAdminEngine
 from engines.dk.engine_dk import DenmarkAdminEngine
 from engines.es.engine_es import SpainAdminEngine
@@ -453,6 +454,19 @@ def main() -> int:
             work_dir=work_dir,
             osm_pbf_path=args.osm,
             include_file_names={f"{region}-latest.osm.pbf" for region in CA_REGIONS},
+        )
+        print(work_dir)
+        return 0
+
+    if country == "cz":
+        CzechRepublicAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
         )
         print(work_dir)
         return 0
