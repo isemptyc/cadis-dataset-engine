@@ -31,9 +31,9 @@ FR_PROFILE = AdminProfile(
             parent_resolution="strict",
         ),
         8: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
+            simplify=True,
+            simplify_tolerance=0.0001,
+            fix_invalid=True,
             parent_resolution="strict",
         ),
     },
