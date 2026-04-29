@@ -169,7 +169,7 @@ class LuxembourgAdminEngine(GermanyAdminEngine):
             },
             "nearby_policy": {
                 "enabled": True,
-                "max_distance_km": 2.0,
+                "max_distance_km": 5.0,
                 "offshore_max_distance_km": 20.0,
             },
         }
