@@ -323,7 +323,7 @@ class GermanyAdminEngine(DatasetBuildEngineBase):
                     .replace(microsecond=0)
                     .isoformat()
                     .replace("+00:00", "Z"),
-                    "country_geometry_filter_applied": False,
+                    "country_geometry_filter_applied": self._country_geometry_path is not None,
                     "dataset_scope_projection_applied": True,
                     "node_count": len(hierarchy_nodes),
                     "edge_count": len(hierarchy_edges),
