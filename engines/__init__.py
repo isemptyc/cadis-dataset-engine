@@ -12,6 +12,7 @@ from .gb import GreatBritainAdminEngine
 from .it import ItalyAdminEngine
 from .jp import JapanAdminEngine
 from .kr import SouthKoreaAdminEngine
+from .my import MalaysiaAdminEngine
 from .nl import NetherlandsAdminEngine
 from .no import NorwayAdminEngine
 from .nz import NewZealandAdminEngine
@@ -34,6 +35,7 @@ __all__ = [
     "ItalyAdminEngine",
     "JapanAdminEngine",
     "SouthKoreaAdminEngine",
+    "MalaysiaAdminEngine",
     "NetherlandsAdminEngine",
     "NorwayAdminEngine",
     "NewZealandAdminEngine",
