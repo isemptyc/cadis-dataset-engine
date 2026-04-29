@@ -20,6 +20,7 @@ from .pt import PortugalAdminEngine
 from .se import SwedenAdminEngine
 from .sg import SingaporeAdminEngine
 from .ch import SwitzerlandAdminEngine
+from .th import ThailandAdminEngine
 from .tw import TaiwanAdminEngine
 
 __all__ = [
@@ -43,5 +44,6 @@ __all__ = [
     "SwedenAdminEngine",
     "SingaporeAdminEngine",
     "SwitzerlandAdminEngine",
+    "ThailandAdminEngine",
     "TaiwanAdminEngine",
 ]
