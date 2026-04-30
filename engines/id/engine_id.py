@@ -82,6 +82,29 @@ class IndonesiaAdminEngine(GermanyAdminEngine):
         "id_r4631029",   # Viqueque (East Timor)
         "id_r12363798",  # Atauro (East Timor)
     }
+    PROVINCE_SUPPLEMENTS = {
+        "id_r3797244": {
+            "name": "Kepulauan Riau",
+            "children": {
+                "id_r10660352",  # Tanjungpinang
+                "id_r10660353",  # Batam
+                "id_r10660354",  # Karimun
+                "id_r10660355",  # Lingga
+                "id_r10660356",  # Bintan
+                "id_r10660357",  # Natuna
+                "id_r10660358",  # Kepulauan Anambas
+            },
+        },
+        "id_r5449460": {
+            "name": "Kalimantan Utara",
+            "children": {
+                "id_r9884460",  # Tarakan
+                "id_r9884461",  # Tana Tidung
+                "id_r9884462",  # Bulungan
+                "id_r9884463",  # Malinau
+            },
+        },
+    }
 
     def __init__(
         self,
@@ -133,6 +156,7 @@ class IndonesiaAdminEngine(GermanyAdminEngine):
             )
 
         self._apply_dataset_overrides()
+        self._inject_missing_province_supplements()
 
         if not self._admin_hierarchy_path.exists():
             self._write_dataset_scoped_hierarchy_artifacts()
@@ -164,6 +188,75 @@ class IndonesiaAdminEngine(GermanyAdminEngine):
             )
 
         self._ensure_runtime_release_layers()
+
+    def _inject_missing_province_supplements(self) -> None:
+        if not self._admin_dataset_path.exists():
+            return
+
+        import json
+        from shapely.geometry import mapping, shape
+        from shapely.ops import unary_union
+
+        payload = json.loads(self._admin_dataset_path.read_text(encoding="utf-8"))
+        admin_by_level = payload.get("admin_by_level")
+        if not isinstance(admin_by_level, dict):
+            return
+
+        level4_rows = admin_by_level.setdefault("4", [])
+        level5_rows = admin_by_level.get("5", [])
+        if not isinstance(level4_rows, list) or not isinstance(level5_rows, list):
+            return
+
+        existing_ids = {
+            row.get("id")
+            for row in level4_rows
+            if isinstance(row, dict) and isinstance(row.get("id"), str)
+        }
+        children_by_id = {
+            row.get("id"): row
+            for row in level5_rows
+            if isinstance(row, dict) and isinstance(row.get("id"), str)
+        }
+
+        changed = False
+        for feature_id, spec in self.PROVINCE_SUPPLEMENTS.items():
+            if feature_id in existing_ids:
+                continue
+            child_rows = [
+                children_by_id[child_id]
+                for child_id in sorted(spec["children"])
+                if child_id in children_by_id and isinstance(children_by_id[child_id].get("geometry"), dict)
+            ]
+            if not child_rows:
+                continue
+
+            geom = unary_union([shape(row["geometry"]) for row in child_rows])
+            level4_rows.append(
+                {
+                    "id": feature_id,
+                    "osm_id": feature_id.removeprefix("id_"),
+                    "name": spec["name"],
+                    "level": 4,
+                    "bbox": list(geom.bounds),
+                    "names": None,
+                    "geometry": mapping(geom),
+                }
+            )
+            existing_ids.add(feature_id)
+            changed = True
+
+        if not changed:
+            return
+
+        level4_rows.sort(key=lambda row: (str(row.get("name", "")), str(row.get("id", ""))))
+        admin_province = payload.get("admin_province")
+        if isinstance(admin_province, list):
+            payload["admin_province"] = list(level4_rows)
+
+        self._admin_dataset_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     def _runtime_policy_payload(self) -> dict:
         return {
