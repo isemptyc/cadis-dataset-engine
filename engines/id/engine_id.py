@@ -66,7 +66,22 @@ class IndonesiaAdminEngine(GermanyAdminEngine):
     COUNTRY_ISO = "ID"
     COUNTRY_NAME = "Indonesia"
     RUNTIME_POLICY_VERSION = "1.0"
-    EXCLUDED_FEATURE_IDS: set[str] = set()
+    EXCLUDED_FEATURE_IDS = {
+        "id_r3725861",   # Oe-Cusse Ambeno (East Timor)
+        "id_r4631017",   # Aileu (East Timor)
+        "id_r4631018",   # Ainaro (East Timor)
+        "id_r4631019",   # Baucau (East Timor)
+        "id_r4631020",   # Bobonaro (East Timor)
+        "id_r4631021",   # Cova-Lima (East Timor)
+        "id_r4631022",   # Dili (East Timor)
+        "id_r4631023",   # Ermera (East Timor)
+        "id_r4631024",   # Lautem (East Timor)
+        "id_r4631025",   # Liquica (East Timor)
+        "id_r4631027",   # Manatuto (East Timor)
+        "id_r4631028",   # Manufahi (East Timor)
+        "id_r4631029",   # Viqueque (East Timor)
+        "id_r12363798",  # Atauro (East Timor)
+    }
 
     def __init__(
         self,
