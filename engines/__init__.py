@@ -18,6 +18,7 @@ from .mx import MexicoAdminEngine
 from .nl import NetherlandsAdminEngine
 from .no import NorwayAdminEngine
 from .nz import NewZealandAdminEngine
+from .ph import PhilippinesAdminEngine
 from .pt import PortugalAdminEngine
 from .se import SwedenAdminEngine
 from .sg import SingaporeAdminEngine
@@ -44,6 +45,7 @@ __all__ = [
     "NetherlandsAdminEngine",
     "NorwayAdminEngine",
     "NewZealandAdminEngine",
+    "PhilippinesAdminEngine",
     "PortugalAdminEngine",
     "SwedenAdminEngine",
     "SingaporeAdminEngine",
