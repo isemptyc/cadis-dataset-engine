@@ -40,6 +40,7 @@ from engines.us.engine_us import US_REGIONS, UnitedStatesAdminEngine
 import osmium
 
 IcelandAdminEngine = importlib.import_module("engines.is.engine_is").IcelandAdminEngine
+IndiaAdminEngine = importlib.import_module("engines.in.engine_in").IndiaAdminEngine
 
 
 TW_1_0_0_OSM_SHA256 = "6b899702570a6554c5e2bcdd30bd569c5685943acea10c054eed34843e3c215a"
@@ -311,6 +312,19 @@ def main() -> int:
 
     if country == "id":
         IndonesiaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "in":
+        IndiaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
