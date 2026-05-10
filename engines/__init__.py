@@ -2,6 +2,7 @@
 
 from .au import AustraliaAdminEngine
 from .be import BelgiumAdminEngine
+from .br import BrazilAdminEngine
 from .ca import CanadaAdminEngine
 from .cz import CzechRepublicAdminEngine
 from .dk import DenmarkAdminEngine
@@ -26,6 +27,7 @@ from .tw import TaiwanAdminEngine
 __all__ = [
     "AustraliaAdminEngine",
     "BelgiumAdminEngine",
+    "BrazilAdminEngine",
     "CanadaAdminEngine",
     "CzechRepublicAdminEngine",
     "DenmarkAdminEngine",

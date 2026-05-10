@@ -9,6 +9,7 @@ from pathlib import Path
 from engines.at.engine_at import AustriaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.be.engine_be import BelgiumAdminEngine
+from engines.br.engine_br import BrazilAdminEngine
 from engines.ca.engine_ca import CA_REGIONS, CanadaAdminEngine
 from engines.cz.engine_cz import CzechRepublicAdminEngine
 from engines.de.engine_de import GermanyAdminEngine
@@ -504,6 +505,19 @@ def main() -> int:
 
     if country == "be":
         BelgiumAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "br":
+        BrazilAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
