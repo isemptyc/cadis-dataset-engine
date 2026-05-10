@@ -19,6 +19,12 @@ DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "greece"
 GR_PROFILE = AdminProfile(
     name_keys=("name:el", "name", "official_name", "name:en"),
     level_policies={
+        3: AdminLevelPolicy(
+            simplify=True,
+            simplify_tolerance=0.01,
+            fix_invalid=True,
+            parent_resolution="strict",
+        ),
         4: AdminLevelPolicy(
             simplify=True,
             simplify_tolerance=0.01,
@@ -61,8 +67,9 @@ class GreeceAdminEngine(DatasetBuildEngineBase):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 5, 6, 7, 8]
+    LEVELS = [3, 4, 5, 6, 7, 8]
     ALLOWED_SHAPES = {
+        (3,),
         (4,),
         (4, 5),
         (4, 5, 6),
@@ -140,6 +147,7 @@ class GreeceAdminEngine(DatasetBuildEngineBase):
                 country_code=self.COUNTRY_ISO,
                 country_name=self.COUNTRY_NAME,
                 level_labels={
+                    3: "admin_autonomous_monastic_state",
                     4: "admin_decentralized_administration",
                     5: "admin_region",
                     6: "admin_regional_unit",
@@ -435,8 +443,9 @@ class GreeceAdminEngine(DatasetBuildEngineBase):
     def _runtime_policy_payload(self) -> dict:
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 5, 6, 7, 8],
+            "allowed_levels": [3, 4, 5, 6, 7, 8],
             "allowed_shapes": [
+                [3],
                 [4],
                 [4, 5],
                 [4, 5, 6],
@@ -470,6 +479,7 @@ class GreeceAdminEngine(DatasetBuildEngineBase):
                 [8],
             ],
             "shape_status": [
+                {"levels": [3], "status": "ok"},
                 {"levels": [4], "status": "partial"},
                 {"levels": [4, 5], "status": "ok"},
                 {"levels": [4, 5, 6], "status": "ok"},
