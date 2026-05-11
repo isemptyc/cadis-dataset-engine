@@ -60,6 +60,7 @@ from engines.tr.engine_tr import TurkeyAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
 from engines.us.engine_us import US_REGIONS, UnitedStatesAdminEngine
 from engines.vn.engine_vn import VietnamAdminEngine
+from engines.xk.engine_xk import KosovoAdminEngine
 import osmium
 
 IcelandAdminEngine = importlib.import_module("engines.is.engine_is").IcelandAdminEngine
@@ -405,6 +406,19 @@ def main() -> int:
 
     if country == "ge":
         GeorgiaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "xk":
+        KosovoAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
