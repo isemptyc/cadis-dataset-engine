@@ -11,6 +11,7 @@ DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "azerbaijan
 AZ_PROFILE = AdminProfile(
     name_keys=("name:en", "name", "official_name", "name:az", "name:ru"),
     level_policies={
+        2: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         3: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         4: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.002, fix_invalid=True, parent_resolution="strict"),
@@ -33,8 +34,8 @@ class AzerbaijanAdminEngine(BrazilAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [3, 4, 5, 6, 7, 8]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((3, 4, 5, 6, 7, 8))
+    LEVELS = [2, 3, 4, 5, 6, 7, 8]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((2, 3, 4, 5, 6, 7, 8))
 
     COUNTRY_ISO = "AZ"
     COUNTRY_NAME = "Azerbaijan"
@@ -69,6 +70,7 @@ class AzerbaijanAdminEngine(BrazilAdminEngine):
                 country_code=self.COUNTRY_ISO,
                 country_name=self.COUNTRY_NAME,
                 level_labels={
+                    2: "admin_country",
                     3: "admin_autonomous_republic",
                     4: "admin_region",
                     5: "admin_district",
@@ -97,11 +99,11 @@ class AzerbaijanAdminEngine(BrazilAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [3, 4, 5, 6, 7, 8],
+            "allowed_levels": [2, 3, 4, 5, 6, 7, 8],
             "allowed_shapes": allowed_shapes,
-            "shape_status": [{"levels": shape, "status": "ok" if 5 in shape else "partial"} for shape in allowed_shapes],
+            "shape_status": [{"levels": shape, "status": "ok" if 2 in shape else "partial"} for shape in allowed_shapes],
             "layers": {"hierarchy_required": True, "repair_required": False},
-            "hierarchy_repair_rules": {"parent_level": 5, "child_levels": [6, 7, 8]},
+            "hierarchy_repair_rules": {"parent_level": 2, "child_levels": [3, 4, 5, 6, 7, 8]},
             "repair_rules": {"parent_level": 5, "child_levels": []},
             "nearby_policy": {"enabled": True, "max_distance_km": 2.0, "offshore_max_distance_km": 20.0},
         }
