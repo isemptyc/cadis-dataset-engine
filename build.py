@@ -13,6 +13,7 @@ from engines.am.engine_am import ArmeniaAdminEngine
 from engines.ar.engine_ar import ArgentinaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.az.engine_az import AzerbaijanAdminEngine
+from engines.er.engine_er import EritreaAdminEngine
 from engines.gq.engine_gq import EquatorialGuineaAdminEngine
 from engines.eg.engine_eg import EgyptAdminEngine
 from engines.dj.engine_dj import DjiboutiAdminEngine
@@ -1851,6 +1852,19 @@ def main() -> int:
 
     if country == "gq":
         EquatorialGuineaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "er":
+        EritreaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
