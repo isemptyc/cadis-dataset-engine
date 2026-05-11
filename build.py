@@ -29,6 +29,7 @@ from engines.fi.engine_fi import FinlandAdminEngine
 from engines.ge.engine_ge import GeorgiaAdminEngine
 from engines.gr.engine_gr import GreeceAdminEngine
 from engines.gb.engine_gb import GreatBritainAdminEngine
+from engines.gy.engine_gy import GuyanaAdminEngine
 from engines.hr.engine_hr import CroatiaAdminEngine
 from engines.hu.engine_hu import HungaryAdminEngine
 from engines.id.engine_id import IndonesiaAdminEngine
@@ -255,6 +256,19 @@ def main() -> int:
 
     if country == "ec":
         EcuadorAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "gy":
+        GuyanaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
