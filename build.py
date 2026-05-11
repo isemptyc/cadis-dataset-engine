@@ -38,6 +38,7 @@ from engines.gy.engine_gy import GuyanaAdminEngine
 from engines.gt.engine_gt import GuatemalaAdminEngine
 from engines.ht.engine_ht import HaitiAdminEngine
 from engines.hr.engine_hr import CroatiaAdminEngine
+from engines.hn.engine_hn import HondurasAdminEngine
 from engines.hu.engine_hu import HungaryAdminEngine
 from engines.id.engine_id import IndonesiaAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
@@ -437,6 +438,19 @@ def main() -> int:
 
     if country == "do":
         DominicanRepublicAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "hn":
+        HondurasAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
