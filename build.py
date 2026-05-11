@@ -34,6 +34,7 @@ from engines.kr.engine_kr import SouthKoreaAdminEngine
 from engines.lu.engine_lu import LuxembourgAdminEngine
 from engines.lt.engine_lt import LithuaniaAdminEngine
 from engines.lv.engine_lv import LatviaAdminEngine
+from engines.mc.engine_mc import MonacoAdminEngine
 from engines.my.engine_my import MalaysiaAdminEngine
 from engines.mx.engine_mx import MexicoAdminEngine
 from engines.nl.engine_nl import NetherlandsAdminEngine
@@ -293,6 +294,19 @@ def main() -> int:
 
     if country == "lt":
         LithuaniaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "mc":
+        MonacoAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
