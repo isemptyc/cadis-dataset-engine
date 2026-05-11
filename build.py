@@ -42,6 +42,7 @@ from engines.hn.engine_hn import HondurasAdminEngine
 from engines.hu.engine_hu import HungaryAdminEngine
 from engines.id.engine_id import IndonesiaAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
+from engines.jm.engine_jm import JamaicaAdminEngine
 from engines.jp.engine_jp import JapanAdminEngine
 from engines.kr.engine_kr import SouthKoreaAdminEngine
 from engines.lu.engine_lu import LuxembourgAdminEngine
@@ -451,6 +452,19 @@ def main() -> int:
 
     if country == "hn":
         HondurasAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "jm":
+        JamaicaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
