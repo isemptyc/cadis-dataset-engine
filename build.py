@@ -58,6 +58,7 @@ from engines.ni.engine_ni import NicaraguaAdminEngine
 from engines.nl.engine_nl import NetherlandsAdminEngine
 from engines.no.engine_no import NorwayAdminEngine
 from engines.nz.engine_nz import NewZealandAdminEngine
+from engines.pa.engine_pa import PanamaAdminEngine
 from engines.pl.engine_pl import PolandAdminEngine
 from engines.ph.engine_ph import PhilippinesAdminEngine
 from engines.pe.engine_pe import PeruAdminEngine
@@ -479,6 +480,19 @@ def main() -> int:
 
     if country == "ni":
         NicaraguaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "pa":
+        PanamaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
