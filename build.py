@@ -13,6 +13,7 @@ from engines.au.engine_au import AustraliaAdminEngine
 from engines.ba.engine_ba import BosniaHerzegovinaAdminEngine
 from engines.be.engine_be import BelgiumAdminEngine
 from engines.bg.engine_bg import BulgariaAdminEngine
+from engines.bo.engine_bo import BoliviaAdminEngine
 from engines.br.engine_br import BrazilAdminEngine
 from engines.ca.engine_ca import CA_REGIONS, CanadaAdminEngine
 from engines.co.engine_co import ColombiaAdminEngine
@@ -240,6 +241,19 @@ def main() -> int:
 
     if country == "bg":
         BulgariaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "bo":
+        BoliviaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
