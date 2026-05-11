@@ -60,6 +60,7 @@ from engines.cl.engine_cl import ChileAdminEngine
 from engines.th.engine_th import ThailandAdminEngine
 from engines.tr.engine_tr import TurkeyAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
+from engines.ua.engine_ua import UkraineAdminEngine
 from engines.us.engine_us import US_REGIONS, UnitedStatesAdminEngine
 from engines.vn.engine_vn import VietnamAdminEngine
 from engines.xk.engine_xk import KosovoAdminEngine
@@ -447,6 +448,19 @@ def main() -> int:
 
     if country == "md":
         MoldovaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "ua":
+        UkraineAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
