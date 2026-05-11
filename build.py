@@ -24,6 +24,7 @@ from engines.fr.engine_fr import FranceAdminEngine
 from engines.fi.engine_fi import FinlandAdminEngine
 from engines.gr.engine_gr import GreeceAdminEngine
 from engines.gb.engine_gb import GreatBritainAdminEngine
+from engines.hr.engine_hr import CroatiaAdminEngine
 from engines.id.engine_id import IndonesiaAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
 from engines.jp.engine_jp import JapanAdminEngine
@@ -223,6 +224,19 @@ def main() -> int:
 
     if country == "bg":
         BulgariaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "hr":
+        CroatiaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
