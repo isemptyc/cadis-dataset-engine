@@ -13,6 +13,7 @@ from engines.am.engine_am import ArmeniaAdminEngine
 from engines.ar.engine_ar import ArgentinaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.az.engine_az import AzerbaijanAdminEngine
+from engines.mg.engine_mg import MadagascarAdminEngine
 from engines.ly.engine_ly import LibyaAdminEngine
 from engines.lr.engine_lr import LiberiaAdminEngine
 from engines.ls.engine_ls import LesothoAdminEngine
@@ -2005,6 +2006,19 @@ def main() -> int:
 
     if country == "ly":
         LibyaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "mg":
+        MadagascarAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
