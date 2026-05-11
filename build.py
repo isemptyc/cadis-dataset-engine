@@ -13,6 +13,7 @@ from engines.am.engine_am import ArmeniaAdminEngine
 from engines.ar.engine_ar import ArgentinaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.az.engine_az import AzerbaijanAdminEngine
+from engines.ng.engine_ng import NigeriaAdminEngine
 from engines.ne.engine_ne import NigerAdminEngine
 from engines.na.engine_na import NamibiaAdminEngine
 from engines.mz.engine_mz import MozambiqueAdminEngine
@@ -2131,6 +2132,19 @@ def main() -> int:
 
     if country == "ne":
         NigerAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "ng":
+        NigeriaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
