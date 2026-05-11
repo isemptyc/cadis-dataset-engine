@@ -50,6 +50,7 @@ from engines.rs.engine_rs import SerbiaAdminEngine
 from engines.se.engine_se import SwedenAdminEngine
 from engines.sg.engine_sg import SingaporeAdminEngine
 from engines.sk.engine_sk import SlovakiaAdminEngine
+from engines.si.engine_si import SloveniaAdminEngine
 from engines.ch.engine_ch import SwitzerlandAdminEngine
 from engines.cl.engine_cl import ChileAdminEngine
 from engines.th.engine_th import ThailandAdminEngine
@@ -363,6 +364,19 @@ def main() -> int:
 
     if country == "sk":
         SlovakiaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "si":
+        SloveniaAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
