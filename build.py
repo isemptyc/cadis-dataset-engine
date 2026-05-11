@@ -13,6 +13,7 @@ from engines.am.engine_am import ArmeniaAdminEngine
 from engines.ar.engine_ar import ArgentinaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.az.engine_az import AzerbaijanAdminEngine
+from engines.tm.engine_tm import TurkmenistanAdminEngine
 from engines.tj.engine_tj import TajikistanAdminEngine
 from engines.sy.engine_sy import SyriaAdminEngine
 from engines.lk.engine_lk import SriLankaAdminEngine
@@ -1585,6 +1586,19 @@ def main() -> int:
 
     if country == "tj":
         TajikistanAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "tm":
+        TurkmenistanAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
