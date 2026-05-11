@@ -52,6 +52,7 @@ from engines.pl.engine_pl import PolandAdminEngine
 from engines.ph.engine_ph import PhilippinesAdminEngine
 from engines.pe.engine_pe import PeruAdminEngine
 from engines.pt.engine_pt import PortugalAdminEngine
+from engines.py.engine_py import ParaguayAdminEngine
 from engines.ro.engine_ro import RomaniaAdminEngine
 from engines.rs.engine_rs import SerbiaAdminEngine
 from engines.se.engine_se import SwedenAdminEngine
@@ -835,6 +836,19 @@ def main() -> int:
 
     if country == "pe":
         PeruAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "py":
+        ParaguayAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
