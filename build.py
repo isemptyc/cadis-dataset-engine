@@ -16,6 +16,7 @@ from engines.bg.engine_bg import BulgariaAdminEngine
 from engines.bo.engine_bo import BoliviaAdminEngine
 from engines.br.engine_br import BrazilAdminEngine
 from engines.bs.engine_bs import BahamasAdminEngine
+from engines.bz.engine_bz import BelizeAdminEngine
 from engines.ca.engine_ca import CA_REGIONS, CanadaAdminEngine
 from engines.co.engine_co import ColombiaAdminEngine
 from engines.cy.engine_cy import CyprusAdminEngine
@@ -339,6 +340,19 @@ def main() -> int:
 
     if country == "bs":
         BahamasAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "bz":
+        BelizeAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
