@@ -36,6 +36,7 @@ from engines.pt.engine_pt import PortugalAdminEngine
 from engines.se.engine_se import SwedenAdminEngine
 from engines.sg.engine_sg import SingaporeAdminEngine
 from engines.ch.engine_ch import SwitzerlandAdminEngine
+from engines.cl.engine_cl import ChileAdminEngine
 from engines.th.engine_th import ThailandAdminEngine
 from engines.tr.engine_tr import TurkeyAdminEngine
 from engines.tw.engine_tw import TaiwanAdminEngine
@@ -601,6 +602,19 @@ def main() -> int:
 
     if country == "ch":
         SwitzerlandAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "cl":
+        ChileAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
