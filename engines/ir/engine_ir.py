@@ -11,16 +11,10 @@ DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "iran"
 IR_PROFILE = AdminProfile(
     name_keys=("name:en", "name", "official_name", "name:ir", "name:ru"),
     level_policies={
-        2: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         4: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.002, fix_invalid=True, parent_resolution="strict"),
         6: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
         7: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        8: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        9: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        10: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        11: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        12: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -37,8 +31,8 @@ class IranAdminEngine(BrazilAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [2, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((2, 4, 5, 6, 7, 8, 9, 10, 11, 12,))
+    LEVELS = [4, 5, 6, 7]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6, 7,))
 
     COUNTRY_ISO = "IR"
     COUNTRY_NAME = "Iran"
@@ -71,16 +65,10 @@ class IranAdminEngine(BrazilAdminEngine):
                 country_code=self.COUNTRY_ISO,
                 country_name=self.COUNTRY_NAME,
                 level_labels={
-                    2: "admin_country",
                     4: "admin_region",
                     5: "admin_district",
                     6: "admin_municipality",
                     7: "admin_locality",
-                    8: "admin_locality",
-                    9: "admin_locality",
-                    10: "admin_detail",
-                    11: "admin_unit",
-                    12: "admin_unit",
                 },
                 id_prefix="ir",
                 country_geometry_path=self._country_geometry_path,
@@ -99,11 +87,11 @@ class IranAdminEngine(BrazilAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [2, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+            "allowed_levels": self.LEVELS,
             "allowed_shapes": allowed_shapes,
             "shape_status": [{"levels": shape, "status": "ok" if 4 in shape else "partial"} for shape in allowed_shapes],
             "layers": {"hierarchy_required": True, "repair_required": False},
-            "hierarchy_repair_rules": {"parent_level": 4, "child_levels": [level for level in [2, 4, 5, 6, 7, 8, 9, 10, 11, 12] if level != 4]},
+            "hierarchy_repair_rules": {"parent_level": 4, "child_levels": [5, 6, 7]},
             "repair_rules": {"parent_level": 4, "child_levels": []},
             "nearby_policy": {"enabled": True, "max_distance_km": 2.0, "offshore_max_distance_km": 20.0},
         }
