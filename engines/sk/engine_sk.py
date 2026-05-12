@@ -35,12 +35,6 @@ SK_PROFILE = AdminProfile(
             fix_invalid=False,
             parent_resolution="strict",
         ),
-        10: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -61,8 +55,8 @@ class SlovakiaAdminEngine(GermanyAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 6, 8, 9, 10]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 6, 8, 9, 10))
+    LEVELS = [4, 6, 8, 9]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 6, 8, 9))
 
     COUNTRY_ISO = "SK"
     COUNTRY_NAME = "Slovakia"
@@ -113,7 +107,6 @@ class SlovakiaAdminEngine(GermanyAdminEngine):
                     6: "admin_district",
                     8: "admin_municipality",
                     9: "admin_borough",
-                    10: "admin_locality",
                 },
                 id_prefix="sk",
                 country_geometry_path=self._country_geometry_path,
@@ -152,7 +145,7 @@ class SlovakiaAdminEngine(GermanyAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 6, 8, 9, 10],
+            "allowed_levels": [4, 6, 8, 9],
             "allowed_shapes": allowed_shapes,
             "shape_status": [
                 {
@@ -167,7 +160,7 @@ class SlovakiaAdminEngine(GermanyAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [6, 8, 9, 10],
+                "child_levels": [6, 8, 9],
             },
             "repair_rules": {
                 "parent_level": 4,

@@ -22,12 +22,6 @@ HR_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
-        8: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -40,15 +34,11 @@ class CroatiaAdminEngine(GermanyAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 7, 8]
+    LEVELS = [4, 7]
     ALLOWED_SHAPES = {
         (4,),
         (4, 7),
-        (4, 7, 8),
-        (4, 8),
         (7,),
-        (7, 8),
-        (8,),
     }
 
     COUNTRY_ISO = "HR"
@@ -98,7 +88,6 @@ class CroatiaAdminEngine(GermanyAdminEngine):
                 level_labels={
                     4: "admin_county",
                     7: "admin_city_or_municipality",
-                    8: "admin_settlement",
                 },
                 id_prefix="hr",
                 country_geometry_path=self._country_geometry_path,
@@ -136,24 +125,16 @@ class CroatiaAdminEngine(GermanyAdminEngine):
     def _runtime_policy_payload(self) -> dict:
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 7, 8],
+            "allowed_levels": [4, 7],
             "allowed_shapes": [
                 [4],
                 [4, 7],
-                [4, 7, 8],
-                [4, 8],
                 [7],
-                [7, 8],
-                [8],
             ],
             "shape_status": [
                 {"levels": [4], "status": "ok"},
                 {"levels": [4, 7], "status": "ok"},
-                {"levels": [4, 7, 8], "status": "ok"},
-                {"levels": [4, 8], "status": "ok"},
                 {"levels": [7], "status": "partial"},
-                {"levels": [7, 8], "status": "partial"},
-                {"levels": [8], "status": "partial"},
             ],
             "layers": {
                 "hierarchy_required": True,
@@ -161,7 +142,7 @@ class CroatiaAdminEngine(GermanyAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [7, 8],
+                "child_levels": [7],
             },
             "repair_rules": {
                 "parent_level": 4,

@@ -29,12 +29,6 @@ BG_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
-        8: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -55,8 +49,8 @@ class BulgariaAdminEngine(GermanyAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 5, 6, 8]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6, 8))
+    LEVELS = [4, 5, 6]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6))
 
     COUNTRY_ISO = "BG"
     COUNTRY_NAME = "Bulgaria"
@@ -106,7 +100,6 @@ class BulgariaAdminEngine(GermanyAdminEngine):
                     4: "admin_province",
                     5: "admin_municipality",
                     6: "admin_city_district",
-                    8: "admin_settlement",
                 },
                 id_prefix="bg",
                 country_geometry_path=self._country_geometry_path,
@@ -145,7 +138,7 @@ class BulgariaAdminEngine(GermanyAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 5, 6, 8],
+            "allowed_levels": [4, 5, 6],
             "allowed_shapes": allowed_shapes,
             "shape_status": [
                 {
@@ -160,7 +153,7 @@ class BulgariaAdminEngine(GermanyAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [5, 6, 8],
+                "child_levels": [5, 6],
             },
             "repair_rules": {
                 "parent_level": 4,

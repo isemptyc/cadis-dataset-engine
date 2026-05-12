@@ -23,12 +23,6 @@ EE_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
-        9: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -49,8 +43,8 @@ class EstoniaAdminEngine(GermanyAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [6, 7, 9]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((6, 7, 9))
+    LEVELS = [6, 7]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((6, 7))
 
     COUNTRY_ISO = "EE"
     COUNTRY_NAME = "Estonia"
@@ -99,7 +93,6 @@ class EstoniaAdminEngine(GermanyAdminEngine):
                 level_labels={
                     6: "admin_county",
                     7: "admin_municipality",
-                    9: "admin_settlement",
                 },
                 id_prefix="ee",
                 country_geometry_path=self._country_geometry_path,
@@ -138,7 +131,7 @@ class EstoniaAdminEngine(GermanyAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [6, 7, 9],
+            "allowed_levels": [6, 7],
             "allowed_shapes": allowed_shapes,
             "shape_status": [
                 {
@@ -153,7 +146,7 @@ class EstoniaAdminEngine(GermanyAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 6,
-                "child_levels": [7, 9],
+                "child_levels": [7],
             },
             "repair_rules": {
                 "parent_level": 6,
