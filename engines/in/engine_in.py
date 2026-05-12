@@ -28,12 +28,6 @@ IN_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
-        9: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -46,23 +40,15 @@ class IndiaAdminEngine(BrazilAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 5, 6, 9]
+    LEVELS = [4, 5, 6]
     ALLOWED_SHAPES = {
         (4,),
         (4, 5),
         (4, 5, 6),
-        (4, 5, 6, 9),
-        (4, 5, 9),
         (4, 6),
-        (4, 6, 9),
-        (4, 9),
         (5,),
         (5, 6),
-        (5, 6, 9),
-        (5, 9),
         (6,),
-        (6, 9),
-        (9,),
     }
 
     COUNTRY_ISO = "IN"
@@ -112,7 +98,6 @@ class IndiaAdminEngine(BrazilAdminEngine):
                     4: "admin_state_union_territory",
                     5: "admin_district",
                     6: "admin_subdistrict",
-                    9: "admin_village_locality",
                 },
                 id_prefix="in",
                 country_geometry_path=self._country_geometry_path,
@@ -148,40 +133,24 @@ class IndiaAdminEngine(BrazilAdminEngine):
     def _runtime_policy_payload(self) -> dict:
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 5, 6, 9],
+            "allowed_levels": [4, 5, 6],
             "allowed_shapes": [
                 [4],
                 [4, 5],
                 [4, 5, 6],
-                [4, 5, 6, 9],
-                [4, 5, 9],
                 [4, 6],
-                [4, 6, 9],
-                [4, 9],
                 [5],
                 [5, 6],
-                [5, 6, 9],
-                [5, 9],
                 [6],
-                [6, 9],
-                [9],
             ],
             "shape_status": [
                 {"levels": [4], "status": "partial"},
                 {"levels": [4, 5], "status": "partial"},
                 {"levels": [4, 5, 6], "status": "ok"},
-                {"levels": [4, 5, 6, 9], "status": "ok"},
-                {"levels": [4, 5, 9], "status": "partial"},
                 {"levels": [4, 6], "status": "partial"},
-                {"levels": [4, 6, 9], "status": "partial"},
-                {"levels": [4, 9], "status": "partial"},
                 {"levels": [5], "status": "partial"},
                 {"levels": [5, 6], "status": "partial"},
-                {"levels": [5, 6, 9], "status": "partial"},
-                {"levels": [5, 9], "status": "partial"},
                 {"levels": [6], "status": "partial"},
-                {"levels": [6, 9], "status": "partial"},
-                {"levels": [9], "status": "partial"},
             ],
             "layers": {
                 "hierarchy_required": True,
@@ -189,7 +158,7 @@ class IndiaAdminEngine(BrazilAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [5, 6, 9],
+                "child_levels": [5, 6],
             },
             "repair_rules": {
                 "parent_level": 4,
