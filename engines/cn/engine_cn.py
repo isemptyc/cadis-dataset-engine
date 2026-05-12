@@ -16,13 +16,6 @@ CN_PROFILE = AdminProfile(
         4: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.002, fix_invalid=True, parent_resolution="strict"),
         6: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        7: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        8: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        9: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        10: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        11: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        12: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        14: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -39,8 +32,8 @@ class ChinaAdminEngine(BrazilAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 14]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6, 7, 8, 9, 10, 11, 12, 14,))
+    LEVELS = [4, 5, 6]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6,))
 
     COUNTRY_ISO = "CN"
     COUNTRY_NAME = "China"
@@ -89,13 +82,6 @@ class ChinaAdminEngine(BrazilAdminEngine):
                 4: "admin_region",
                 5: "admin_district",
                 6: "admin_municipality",
-                7: "admin_locality",
-                8: "admin_locality",
-                9: "admin_locality",
-                10: "admin_detail",
-                11: "admin_unit",
-                12: "admin_unit",
-                14: "admin_unit",
             },
             id_prefix="cn",
             country_geometry_path=self._country_geometry_path,
@@ -160,13 +146,6 @@ class ChinaAdminEngine(BrazilAdminEngine):
             4: "admin_region",
             5: "admin_district",
             6: "admin_municipality",
-            7: "admin_locality",
-            8: "admin_locality",
-            9: "admin_locality",
-            10: "admin_detail",
-            11: "admin_unit",
-            12: "admin_unit",
-            14: "admin_unit",
         }
         for key in sorted(set(label_keys.values())):
             merged_payload[key] = []
@@ -200,13 +179,13 @@ class ChinaAdminEngine(BrazilAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 5, 6, 7, 8, 9, 10, 11, 12, 14],
+            "allowed_levels": [4, 5, 6],
             "allowed_shapes": allowed_shapes,
             "shape_status": [{"levels": shape, "status": "ok" if 4 in shape or 5 in shape or 6 in shape else "partial"} for shape in allowed_shapes],
             "layers": {"hierarchy_required": True, "repair_required": False},
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [level for level in [4, 5, 6, 7, 8, 9, 10, 11, 12, 14] if level != 4],
+                "child_levels": [5, 6],
                 "sub_engine_anchors": [{"source": "tibet", "parent_levels": [5, 6]}],
             },
             "repair_rules": {"parent_level": 4, "child_levels": []},
