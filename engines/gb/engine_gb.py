@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime, timezone
 import json
 import shutil
 
@@ -7,7 +8,6 @@ from dataset import (
     AdminLevelPolicy,
     AdminProfile,
     build_admin_dataset,
-    extract_admin_hierarchy,
     render_admin_tree,
 )
 from ffsf import (
@@ -94,9 +94,13 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
         *,
         osm_pbf_path: str | Path | None = None,
         work_dir: Path | None = None,
+        country_geometry_path: str | Path | None = None,
     ):
         self._work_dir = Path(work_dir) if work_dir else DEFAULT_WORK_DIR
         self._work_dir.mkdir(parents=True, exist_ok=True)
+        self._country_geometry_path = (
+            Path(country_geometry_path) if country_geometry_path is not None else None
+        )
 
         self._admin_dataset_path = self._work_dir / "gb_admin.json"
         self._ffsf_dataset_path = self._work_dir / "gb_admin.bin"
@@ -114,43 +118,202 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
             )
         self._ensure_datasets(osm_pbf_path=str(osm_pbf_path))
 
-    def _ensure_datasets(self, osm_pbf_path: str) -> None:
-        if not self._admin_dataset_path.exists():
-            build_admin_dataset(
-                pbf_path=osm_pbf_path,
+    @staticmethod
+    def _source_input_paths(osm_pbf_path: str | Path) -> list[Path]:
+        path = Path(osm_pbf_path)
+        if not path.is_dir():
+            return [path]
+
+        source_paths: list[Path] = []
+        for stem in ("great-britain", "ireland-and-northern-ireland"):
+            matches = sorted(path.glob(f"{stem}-*.osm.pbf"))
+            if not matches:
+                raise FileNotFoundError(f"Missing GB source component matching {stem}-*.osm.pbf in {path}")
+            source_paths.append(matches[-1])
+        return source_paths
+
+    def _build_single_source_admin_dataset(self, *, pbf_path: Path, output_path: Path) -> dict:
+        build_admin_dataset(
+            pbf_path=str(pbf_path),
+            output_path=output_path,
+            levels=self.LEVELS,
+            profile=GB_PROFILE,
+            fallback_policy=None,
+            country_code=self.COUNTRY_ISO,
+            country_name=self.COUNTRY_NAME,
+            level_labels={
+                4: "admin_country_region",
+                5: "admin_county",
+                6: "admin_district",
+                8: "admin_locality",
+            },
+            id_prefix="gb",
+            country_geometry_path=self._country_geometry_path,
+        )
+        return json.loads(output_path.read_text(encoding="utf-8"))
+
+    def _build_admin_dataset(self, *, osm_pbf_path: str) -> None:
+        source_paths = self._source_input_paths(osm_pbf_path)
+        if len(source_paths) == 1:
+            self._build_single_source_admin_dataset(
+                pbf_path=source_paths[0],
                 output_path=self._admin_dataset_path,
-                levels=self.LEVELS,
-                profile=GB_PROFILE,
-                fallback_policy=None,
-                country_code=self.COUNTRY_ISO,
-                country_name=self.COUNTRY_NAME,
-                level_labels={
-                    4: "admin_country_region",
-                    5: "admin_county",
-                    6: "admin_district",
-                    8: "admin_locality",
-                },
-                id_prefix="gb",
-                country_geometry_path=None,
             )
+            return
 
-        if not self._admin_hierarchy_path.exists():
-            nodes_path = self._work_dir / "admin_nodes.json"
-            edges_path = self._work_dir / "admin_edges.json"
+        source_dir = self._work_dir / "_source_builds"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        merged_payload: dict | None = None
+        processing_time_sec = 0.0
+        source_names: list[str] = []
+        seen_ids: set[str] = set()
 
-            if not nodes_path.exists() or not edges_path.exists():
-                extract_admin_hierarchy(
-                    pbf_path=osm_pbf_path,
-                    output_dir=self._work_dir,
-                    name_keys=GB_PROFILE.name_keys,
-                    target_levels=self.LEVELS,
+        for source_path in source_paths:
+            payload = self._build_single_source_admin_dataset(
+                pbf_path=source_path,
+                output_path=source_dir / f"{source_path.stem}_admin.json",
+            )
+            source_names.append(source_path.name)
+            meta = payload.get("meta")
+            if isinstance(meta, dict):
+                processing_time = meta.get("processing_time_sec")
+                if isinstance(processing_time, (int, float)):
+                    processing_time_sec += float(processing_time)
+            if merged_payload is None:
+                merged_payload = payload
+                seen_ids = {
+                    row["id"]
+                    for rows in merged_payload.get("admin_by_level", {}).values()
+                    if isinstance(rows, list)
+                    for row in rows
+                    if isinstance(row, dict) and isinstance(row.get("id"), str)
+                }
+                continue
+
+            merged_by_level = merged_payload.setdefault("admin_by_level", {})
+            for level in self.LEVELS:
+                level_key = str(level)
+                target_rows = merged_by_level.setdefault(level_key, [])
+                for row in payload.get("admin_by_level", {}).get(level_key, []):
+                    if not isinstance(row, dict):
+                        continue
+                    row_id = row.get("id")
+                    if not isinstance(row_id, str) or row_id in seen_ids:
+                        continue
+                    target_rows.append(row)
+                    seen_ids.add(row_id)
+
+        if merged_payload is None:
+            raise RuntimeError("No Great Britain source components were built")
+
+        label_keys = {
+            4: "admin_country_region",
+            5: "admin_county",
+            6: "admin_district",
+            8: "admin_locality",
+        }
+        for key in sorted(set(label_keys.values())):
+            merged_payload[key] = []
+        for level, key in label_keys.items():
+            merged_payload[key].extend(merged_payload.get("admin_by_level", {}).get(str(level), []))
+
+        meta = merged_payload.setdefault("meta", {})
+        meta["source"] = "OpenStreetMap composite"
+        meta["source_components"] = source_names
+        meta["generated_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+        meta["processing_time_sec"] = processing_time_sec
+        self._admin_dataset_path.write_text(
+            json.dumps(merged_payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
+    def _write_dataset_scoped_hierarchy_artifacts(self) -> None:
+        dataset_nodes = self._load_admin_dataset_nodes()
+        level_counts: dict[int, int] = {}
+        hierarchy_nodes: list[dict] = []
+        hierarchy_edges: list[dict] = []
+
+        for node in dataset_nodes:
+            node_id = node["id"]
+            raw_id = f"{self.COUNTRY_ISO.lower()}_{node_id}"
+            level = node["level"]
+            parent_id = node.get("parent_id")
+            raw_parent_id = None
+            if isinstance(parent_id, str) and parent_id:
+                raw_parent_id = f"{self.COUNTRY_ISO.lower()}_{parent_id}"
+
+            hierarchy_nodes.append(
+                {
+                    "id": raw_id,
+                    "osm_id": raw_id[3:] if raw_id.startswith(f"{self.COUNTRY_ISO.lower()}_") else raw_id,
+                    "name": node["name"],
+                    "names": node.get("names"),
+                    "admin_level": level,
+                    "tags": {
+                        "boundary": "administrative",
+                        "admin_level": str(level),
+                    },
+                }
+            )
+            level_counts[level] = level_counts.get(level, 0) + 1
+
+            if raw_parent_id is not None:
+                hierarchy_edges.append(
+                    {
+                        "parent": raw_parent_id,
+                        "child": raw_id,
+                        "method": "dataset_parent",
+                        "confidence": 1.0,
+                    }
                 )
 
-            render_admin_tree(
-                nodes_path=nodes_path,
-                edges_path=edges_path,
-                output_path=self._admin_hierarchy_path,
-            )
+        nodes_path = self._work_dir / "admin_nodes.json"
+        edges_path = self._work_dir / "admin_edges.json"
+        report_path = self._work_dir / "admin_report.json"
+
+        nodes_path.write_text(
+            json.dumps(hierarchy_nodes, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        edges_path.write_text(
+            json.dumps(hierarchy_edges, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        report_path.write_text(
+            json.dumps(
+                {
+                    "generated_at": datetime.now(timezone.utc)
+                    .replace(microsecond=0)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                    "country_geometry_filter_applied": self._country_geometry_path is not None,
+                    "dataset_scope_projection_applied": True,
+                    "node_count": len(hierarchy_nodes),
+                    "edge_count": len(hierarchy_edges),
+                    "unresolved_is_in_edges": 0,
+                    "admin_level_distribution": {
+                        str(level): count for level, count in sorted(level_counts.items())
+                    },
+                    "unresolved_samples": [],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
+        render_admin_tree(
+            nodes_path=nodes_path,
+            edges_path=edges_path,
+            output_path=self._admin_hierarchy_path,
+        )
+
+    def _ensure_datasets(self, osm_pbf_path: str) -> None:
+        if not self._admin_dataset_path.exists():
+            self._build_admin_dataset(osm_pbf_path=osm_pbf_path)
+
+        if not self._admin_hierarchy_path.exists():
+            self._write_dataset_scoped_hierarchy_artifacts()
 
         if not self._ffsf_dataset_path.exists() or not self._ffsf_meta_path.exists():
             if not self._admin_dataset_path.exists():
@@ -161,6 +324,7 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
                 input_path=self._admin_dataset_path,
                 output_path=self._ffsf_dataset_path,
                 version=3,
+                country_geometry_path=self._country_geometry_path,
             )
 
         if not self._semantic_dataset_path.exists():

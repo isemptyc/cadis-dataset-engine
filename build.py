@@ -887,6 +887,7 @@ def main() -> int:
         GreatBritainAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
         )
         _write_source_osm_identity(
             work_dir=work_dir,
