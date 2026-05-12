@@ -13,6 +13,7 @@ from engines.am.engine_am import ArmeniaAdminEngine
 from engines.ar.engine_ar import ArgentinaAdminEngine
 from engines.au.engine_au import AustraliaAdminEngine
 from engines.az.engine_az import AzerbaijanAdminEngine
+from engines.hk.engine_hk import HongKongAdminEngine
 from engines.cn.engine_cn import ChinaAdminEngine
 from engines.zw.engine_zw import ZimbabweAdminEngine
 from engines.zm.engine_zm import ZambiaAdminEngine
@@ -2411,6 +2412,19 @@ def main() -> int:
 
     if country == "cn":
         ChinaAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "hk":
+        HongKongAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
