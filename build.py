@@ -135,6 +135,7 @@ from engines.ht.engine_ht import HaitiAdminEngine
 from engines.hr.engine_hr import CroatiaAdminEngine
 from engines.hn.engine_hn import HondurasAdminEngine
 from engines.hu.engine_hu import HungaryAdminEngine
+from engines.ie.engine_ie import IrelandAdminEngine
 from engines.id.engine_id import IndonesiaAdminEngine
 from engines.it.engine_it import ItalyAdminEngine
 from engines.jm.engine_jm import JamaicaAdminEngine
@@ -899,6 +900,19 @@ def main() -> int:
 
     if country == "gb":
         GreatBritainAdminEngine.prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
+        )
+        print(work_dir)
+        return 0
+
+    if country == "ie":
+        IrelandAdminEngine.prepare_datasets(
             osm_pbf_path=args.osm,
             work_dir=work_dir,
             country_geometry_path=args.country_geometry,
