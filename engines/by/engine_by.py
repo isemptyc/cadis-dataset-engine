@@ -14,11 +14,7 @@ BY_PROFILE = AdminProfile(
         2: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         4: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         6: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        7: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
         8: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        9: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        10: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
-        11: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -35,8 +31,8 @@ class BelarusAdminEngine(BrazilAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [2, 4, 6, 7, 8, 9, 10, 11]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((2, 4, 6, 7, 8, 9, 10, 11,))
+    LEVELS = [2, 4, 6, 8]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((2, 4, 6, 8,))
 
     COUNTRY_ISO = "BY"
     COUNTRY_NAME = "Belarus"
@@ -72,11 +68,7 @@ class BelarusAdminEngine(BrazilAdminEngine):
                     2: "admin_country",
                     4: "admin_region",
                     6: "admin_municipality",
-                    7: "admin_locality",
                     8: "admin_locality",
-                    9: "admin_locality",
-                    10: "admin_detail",
-                    11: "admin_unit",
                 },
                 id_prefix="by",
                 country_geometry_path=self._country_geometry_path,
@@ -95,11 +87,11 @@ class BelarusAdminEngine(BrazilAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [2, 4, 6, 7, 8, 9, 10, 11],
+            "allowed_levels": [2, 4, 6, 8],
             "allowed_shapes": allowed_shapes,
             "shape_status": [{"levels": shape, "status": "ok" if 2 in shape else "partial"} for shape in allowed_shapes],
             "layers": {"hierarchy_required": True, "repair_required": False},
-            "hierarchy_repair_rules": {"parent_level": 2, "child_levels": [level for level in [2, 4, 6, 7, 8, 9, 10, 11] if level != 2]},
+            "hierarchy_repair_rules": {"parent_level": 2, "child_levels": [4, 6, 8]},
             "repair_rules": {"parent_level": 2, "child_levels": []},
             "nearby_policy": {"enabled": True, "max_distance_km": 2.0, "offshore_max_distance_km": 20.0},
         }
