@@ -29,7 +29,7 @@ GreatBritainAdminDatasetBuild
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "great_britain"
 
 GB_PROFILE = AdminProfile(
-    name_keys=("name:en", "name", "official_name"),
+    name_keys=("name:en", "name", "name:ga", "official_name"),
     level_policies={
         4: AdminLevelPolicy(
             simplify=True,
@@ -64,7 +64,7 @@ GB_PROFILE = AdminProfile(
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
-    multilingual_allowed_languages=("en", "cy", "gd"),
+    multilingual_allowed_languages=("en", "cy", "gd", "ga"),
 )
 
 
