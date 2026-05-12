@@ -23,12 +23,6 @@ RO_PROFILE = AdminProfile(
             fix_invalid=False,
             parent_resolution="strict",
         ),
-        9: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -49,8 +43,8 @@ class RomaniaAdminEngine(GermanyAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 8, 9]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 8, 9))
+    LEVELS = [4, 8]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 8))
 
     COUNTRY_ISO = "RO"
     COUNTRY_NAME = "Romania"
@@ -99,7 +93,6 @@ class RomaniaAdminEngine(GermanyAdminEngine):
                 level_labels={
                     4: "admin_county",
                     8: "admin_municipality",
-                    9: "admin_locality",
                 },
                 id_prefix="ro",
                 country_geometry_path=self._country_geometry_path,
@@ -138,7 +131,7 @@ class RomaniaAdminEngine(GermanyAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 8, 9],
+            "allowed_levels": [4, 8],
             "allowed_shapes": allowed_shapes,
             "shape_status": [
                 {
@@ -153,7 +146,7 @@ class RomaniaAdminEngine(GermanyAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [8, 9],
+                "child_levels": [8],
             },
             "repair_rules": {
                 "parent_level": 4,

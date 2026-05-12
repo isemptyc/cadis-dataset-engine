@@ -22,12 +22,6 @@ TR_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
-        8: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -40,15 +34,11 @@ class TurkeyAdminEngine(GermanyAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 6, 8]
+    LEVELS = [4, 6]
     ALLOWED_SHAPES = {
         (4,),
         (4, 6),
-        (4, 6, 8),
-        (4, 8),
         (6,),
-        (6, 8),
-        (8,),
     }
 
     COUNTRY_ISO = "TR"
@@ -98,7 +88,6 @@ class TurkeyAdminEngine(GermanyAdminEngine):
                 level_labels={
                     4: "admin_province",
                     6: "admin_district",
-                    8: "admin_neighborhood",
                 },
                 id_prefix="tr",
                 country_geometry_path=self._country_geometry_path,
@@ -136,24 +125,16 @@ class TurkeyAdminEngine(GermanyAdminEngine):
     def _runtime_policy_payload(self) -> dict:
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 6, 8],
+            "allowed_levels": [4, 6],
             "allowed_shapes": [
                 [4],
                 [4, 6],
-                [4, 6, 8],
-                [4, 8],
                 [6],
-                [6, 8],
-                [8],
             ],
             "shape_status": [
                 {"levels": [4], "status": "partial"},
                 {"levels": [4, 6], "status": "ok"},
-                {"levels": [4, 6, 8], "status": "ok"},
-                {"levels": [4, 8], "status": "ok"},
                 {"levels": [6], "status": "partial"},
-                {"levels": [6, 8], "status": "partial"},
-                {"levels": [8], "status": "partial"},
             ],
             "layers": {
                 "hierarchy_required": True,
@@ -161,7 +142,7 @@ class TurkeyAdminEngine(GermanyAdminEngine):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [6, 8],
+                "child_levels": [6],
             },
             "repair_rules": {
                 "parent_level": 4,
