@@ -11,7 +11,7 @@ from ffsf.semantic_dataset_exporter import export_admin_semantic_dataset
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "china"
 
 CN_PROFILE = AdminProfile(
-    name_keys=("name:en", "name", "official_name", "name:zh", "name:ru"),
+    name_keys=("name:en", "name", "official_name", "name:zh", "name:bo", "name:ru"),
     level_policies={
         4: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.002, fix_invalid=True, parent_resolution="strict"),
@@ -26,7 +26,7 @@ CN_PROFILE = AdminProfile(
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
-    multilingual_allowed_languages=('en', 'zh', 'ru'),
+    multilingual_allowed_languages=('en', 'zh', 'bo', 'ru'),
 )
 
 
