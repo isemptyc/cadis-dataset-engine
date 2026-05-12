@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime, timezone
+from itertools import combinations
 import json
 import shutil
 
@@ -48,6 +49,12 @@ GB_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
+        7: AdminLevelPolicy(
+            simplify=True,
+            simplify_tolerance=0.001,
+            fix_invalid=True,
+            parent_resolution="strict",
+        ),
         8: AdminLevelPolicy(
             simplify=False,
             simplify_tolerance=None,
@@ -61,29 +68,17 @@ GB_PROFILE = AdminProfile(
 )
 
 
+def _all_nonempty_level_shapes(levels: tuple[int, ...]) -> set[tuple[int, ...]]:
+    return {shape for size in range(1, len(levels) + 1) for shape in combinations(levels, size)}
+
+
 class GreatBritainAdminEngine(DatasetBuildEngineBase):
     ENGINE = "gb_admin"
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 5, 6, 8]
-    ALLOWED_SHAPES = {
-        (4,),
-        (4, 5),
-        (4, 5, 6),
-        (4, 5, 6, 8),
-        (4, 5, 8),
-        (4, 6),
-        (4, 6, 8),
-        (4, 8),
-        (5,),
-        (5, 6),
-        (5, 6, 8),
-        (5, 8),
-        (6,),
-        (6, 8),
-        (8,),
-    }
+    LEVELS = [4, 5, 6, 7, 8]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6, 7, 8))
 
     COUNTRY_ISO = "GB"
     COUNTRY_NAME = "United Kingdom"
@@ -145,6 +140,7 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
                 4: "admin_country_region",
                 5: "admin_county",
                 6: "admin_district",
+                7: "admin_district",
                 8: "admin_locality",
             },
             id_prefix="gb",
@@ -210,6 +206,7 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
             4: "admin_country_region",
             5: "admin_county",
             6: "admin_district",
+            7: "admin_district",
             8: "admin_locality",
         }
         for key in sorted(set(label_keys.values())):
@@ -512,40 +509,14 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
     def _runtime_policy_payload(self) -> dict:
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 5, 6, 8],
-            "allowed_shapes": [
-                [4],
-                [4, 5],
-                [4, 5, 6],
-                [4, 5, 6, 8],
-                [4, 5, 8],
-                [4, 6],
-                [4, 6, 8],
-                [4, 8],
-                [5],
-                [5, 6],
-                [5, 6, 8],
-                [5, 8],
-                [6],
-                [6, 8],
-                [8],
-            ],
+            "allowed_levels": [4, 5, 6, 7, 8],
+            "allowed_shapes": [list(shape) for shape in sorted(self.ALLOWED_SHAPES)],
             "shape_status": [
-                {"levels": [4], "status": "partial"},
-                {"levels": [4, 5], "status": "partial"},
-                {"levels": [4, 5, 6], "status": "ok"},
-                {"levels": [4, 5, 6, 8], "status": "ok"},
-                {"levels": [4, 5, 8], "status": "partial"},
-                {"levels": [4, 6], "status": "ok"},
-                {"levels": [4, 6, 8], "status": "ok"},
-                {"levels": [4, 8], "status": "partial"},
-                {"levels": [5], "status": "partial"},
-                {"levels": [5, 6], "status": "partial"},
-                {"levels": [5, 6, 8], "status": "partial"},
-                {"levels": [5, 8], "status": "partial"},
-                {"levels": [6], "status": "partial"},
-                {"levels": [6, 8], "status": "partial"},
-                {"levels": [8], "status": "partial"},
+                {
+                    "levels": list(shape),
+                    "status": "ok" if 4 in shape and (6 in shape or 7 in shape) else "partial",
+                }
+                for shape in sorted(self.ALLOWED_SHAPES)
             ],
             "layers": {
                 "hierarchy_required": True,
@@ -553,7 +524,7 @@ class GreatBritainAdminEngine(DatasetBuildEngineBase):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [5, 6, 8],
+                "child_levels": [5, 6, 7, 8],
             },
             "repair_rules": {
                 "parent_level": 4,
