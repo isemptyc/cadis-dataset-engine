@@ -18,7 +18,7 @@ from ffsf.semantic_dataset_exporter import export_admin_semantic_dataset
 
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "australia"
 
-AU_LEVELS = [4, 6, 7, 9]
+AU_LEVELS = [4, 6, 7]
 AU_ALLOWED_SHAPES = {
     tuple(shape)
     for size in range(1, len(AU_LEVELS) + 1)
@@ -44,12 +44,6 @@ AU_PROFILE = AdminProfile(
             simplify=True,
             simplify_tolerance=0.001,
             fix_invalid=True,
-            parent_resolution="strict",
-        ),
-        9: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
             parent_resolution="strict",
         ),
     },
@@ -114,7 +108,6 @@ class AustraliaAdminEngine(DatasetBuildEngineBase):
                     4: "admin_state_territory",
                     6: "admin_local_government_area",
                     7: "admin_district",
-                    9: "admin_suburb_locality",
                 },
                 id_prefix="au",
                 country_geometry_path=self._country_geometry_path,
@@ -401,11 +394,8 @@ class AustraliaAdminEngine(DatasetBuildEngineBase):
     def _runtime_policy_payload(self) -> dict:
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         ok_shapes = {
-            (4, 6, 9),
-            (4, 7, 9),
             (4, 6),
             (4, 7),
-            (4, 9),
         }
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
@@ -424,7 +414,7 @@ class AustraliaAdminEngine(DatasetBuildEngineBase):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [6, 7, 9],
+                "child_levels": [6, 7],
             },
             "repair_rules": {
                 "parent_level": 4,
