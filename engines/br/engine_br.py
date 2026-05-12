@@ -30,12 +30,6 @@ BR_PROFILE = AdminProfile(
             fix_invalid=True,
             parent_resolution="strict",
         ),
-        9: AdminLevelPolicy(
-            simplify=False,
-            simplify_tolerance=None,
-            fix_invalid=False,
-            parent_resolution="strict",
-        ),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
@@ -48,15 +42,11 @@ class BrazilAdminEngine(DatasetBuildEngineBase):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [4, 8, 9]
+    LEVELS = [4, 8]
     ALLOWED_SHAPES = {
         (4,),
         (4, 8),
-        (4, 8, 9),
-        (4, 9),
         (8,),
-        (8, 9),
-        (9,),
     }
 
     COUNTRY_ISO = "BR"
@@ -105,7 +95,6 @@ class BrazilAdminEngine(DatasetBuildEngineBase):
                 level_labels={
                     4: "admin_state",
                     8: "admin_municipality",
-                    9: "admin_district",
                 },
                 id_prefix="br",
                 country_geometry_path=self._country_geometry_path,
@@ -392,24 +381,16 @@ class BrazilAdminEngine(DatasetBuildEngineBase):
     def _runtime_policy_payload(self) -> dict:
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [4, 8, 9],
+            "allowed_levels": [4, 8],
             "allowed_shapes": [
                 [4],
                 [4, 8],
-                [4, 8, 9],
-                [4, 9],
                 [8],
-                [8, 9],
-                [9],
             ],
             "shape_status": [
                 {"levels": [4], "status": "partial"},
                 {"levels": [4, 8], "status": "ok"},
-                {"levels": [4, 8, 9], "status": "ok"},
-                {"levels": [4, 9], "status": "partial"},
                 {"levels": [8], "status": "partial"},
-                {"levels": [8, 9], "status": "partial"},
-                {"levels": [9], "status": "partial"},
             ],
             "layers": {
                 "hierarchy_required": True,
@@ -417,7 +398,7 @@ class BrazilAdminEngine(DatasetBuildEngineBase):
             },
             "hierarchy_repair_rules": {
                 "parent_level": 4,
-                "child_levels": [8, 9],
+                "child_levels": [8],
             },
             "repair_rules": {
                 "parent_level": 4,
