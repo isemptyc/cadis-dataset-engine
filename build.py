@@ -151,6 +151,25 @@ from engines.mk.engine_mk import MacedoniaAdminEngine
 from engines.my.engine_my import MalaysiaAdminEngine
 from engines.mx.engine_mx import MexicoAdminEngine
 from engines.ni.engine_ni import NicaraguaAdminEngine
+from engines.ck.engine_ck import CookIslandsAdminEngine
+from engines.fj.engine_fj import FijiAdminEngine
+from engines.ki.engine_ki import KiribatiAdminEngine
+from engines.mh.engine_mh import MarshallIslandsAdminEngine
+from engines.fm.engine_fm import MicronesiaAdminEngine
+from engines.nr.engine_nr import NauruAdminEngine
+from engines.nc.engine_nc import NewCaledoniaAdminEngine
+from engines.nu.engine_nu import NiueAdminEngine
+from engines.pw.engine_pw import PalauAdminEngine
+from engines.pg.engine_pg import PapuaNewGuineaAdminEngine
+from engines.pn.engine_pn import PitcairnIslandsAdminEngine
+from engines.pf.engine_pf import FrenchPolynesiaAdminEngine
+from engines.ws.engine_ws import SamoaAdminEngine
+from engines.sb.engine_sb import SolomonIslandsAdminEngine
+from engines.tk.engine_tk import TokelauAdminEngine
+from engines.to.engine_to import TongaAdminEngine
+from engines.tv.engine_tv import TuvaluAdminEngine
+from engines.vu.engine_vu import VanuatuAdminEngine
+from engines.wf.engine_wf import WallisAndFutunaAdminEngine
 from engines.nl.engine_nl import NetherlandsAdminEngine
 from engines.no.engine_no import NorwayAdminEngine
 from engines.nz.engine_nz import NewZealandAdminEngine
@@ -2596,6 +2615,40 @@ def main() -> int:
             work_dir=work_dir,
             osm_pbf_path=args.osm,
             include_file_names={f"{region}-latest.osm.pbf" for region in US_REGIONS},
+        )
+        print(work_dir)
+        return 0
+
+    oceania_engines = {
+        "ck": CookIslandsAdminEngine,
+        "fj": FijiAdminEngine,
+        "ki": KiribatiAdminEngine,
+        "mh": MarshallIslandsAdminEngine,
+        "fm": MicronesiaAdminEngine,
+        "nr": NauruAdminEngine,
+        "nc": NewCaledoniaAdminEngine,
+        "nu": NiueAdminEngine,
+        "pw": PalauAdminEngine,
+        "pg": PapuaNewGuineaAdminEngine,
+        "pn": PitcairnIslandsAdminEngine,
+        "pf": FrenchPolynesiaAdminEngine,
+        "ws": SamoaAdminEngine,
+        "sb": SolomonIslandsAdminEngine,
+        "tk": TokelauAdminEngine,
+        "to": TongaAdminEngine,
+        "tv": TuvaluAdminEngine,
+        "vu": VanuatuAdminEngine,
+        "wf": WallisAndFutunaAdminEngine,
+    }
+    if country in oceania_engines:
+        oceania_engines[country].prepare_datasets(
+            osm_pbf_path=args.osm,
+            work_dir=work_dir,
+            country_geometry_path=args.country_geometry,
+        )
+        _write_source_osm_identity(
+            work_dir=work_dir,
+            osm_pbf_path=args.osm,
         )
         print(work_dir)
         return 0
