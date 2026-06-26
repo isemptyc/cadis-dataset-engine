@@ -217,11 +217,20 @@ class JapanAdminEngine(DatasetBuildEngineBase):
         ):
             shutil.copy2(self._ffsf_dataset_path, self._runtime_geometry_path)
 
-        if (
-            not self._runtime_geometry_meta_path.exists()
-            or self._runtime_geometry_meta_path.stat().st_size != self._ffsf_meta_path.stat().st_size
-        ):
-            shutil.copy2(self._ffsf_meta_path, self._runtime_geometry_meta_path)
+        if not self._runtime_geometry_meta_path.exists():
+            # Build the runtime geometry meta from the FFSF meta, patching in
+            # country_scope_flag=True on all level-4 prefecture features.
+            # Level 3 has only Hokkaido (the sole OSM admin_level=3 polygon for Japan),
+            # so using level 3 as scope would exclude all other regions from offshore
+            # resolution. All 47 prefectures at level 4 provide full Japan coverage.
+            rows = self._load_feature_meta_rows()
+            for row in rows:
+                if row.get("level") == 4:
+                    row["country_scope_flag"] = True
+            self._runtime_geometry_meta_path.write_text(
+                json.dumps(rows, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
         feature_rows = self._load_feature_meta_rows()
         level4_name_to_id = {
