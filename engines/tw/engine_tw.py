@@ -17,6 +17,57 @@ from ffsf.semantic_dataset_exporter import (
     export_admin_semantic_dataset,
 )
 
+QIJIN_DISTRICT_REPAIR_FEATURE = {
+    "id": "tw_r2106668",
+    "osm_id": "r2106668",
+    "name": "旗津區",
+    "names": {
+        "zh-Hant": "旗津區",
+        "en": "Qijin District",
+    },
+    "level": 7,
+    "bbox": [120.25373, 22.550452, 120.318303, 22.622765],
+    "parent": "tw_r2127079",
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [120.273685, 22.613969],
+                [120.267334, 22.615873],
+                [120.264716, 22.617655],
+                [120.263343, 22.619081],
+                [120.261969, 22.621181],
+                [120.259695, 22.622765],
+                [120.256391, 22.62221],
+                [120.255103, 22.621855],
+                [120.254202, 22.620983],
+                [120.25373, 22.619795],
+                [120.254117, 22.619042],
+                [120.256047, 22.616229],
+                [120.258965, 22.614288],
+                [120.261197, 22.612704],
+                [120.262313, 22.610208],
+                [120.264051, 22.608643],
+                [120.268965, 22.604582],
+                [120.277376, 22.592617],
+                [120.287418, 22.581364],
+                [120.299433, 22.565512],
+                [120.303555, 22.555843],
+                [120.306988, 22.551086],
+                [120.312309, 22.550452],
+                [120.317959, 22.553569],
+                [120.318303, 22.557374],
+                [120.307245, 22.569792],
+                [120.292139, 22.58905],
+                [120.279179, 22.609653],
+                [120.273685, 22.613969],
+            ]
+        ],
+    },
+    "source": "manual_repair",
+    "repair_note": "Qijin District relation has no usable level-7 polygon in OSM export; curated from manual district footprint.",
+}
+
 """
 TaiwanAdminDatasetBuild
 ├── Polygon extraction dataset (taiwan_admin.json)
@@ -133,6 +184,7 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
                 id_prefix="tw",
                 country_geometry_path=None,
             )
+        self._ensure_curated_repair_features()
 
         if not self._admin_hierarchy_path.exists():
             nodes_path = self._work_dir / "admin_nodes.json"
@@ -183,6 +235,47 @@ class TaiwanAdminEngine(DatasetBuildEngineBase):
                 source="admin_tree.txt",
             )
         self._ensure_runtime_release_layers()
+
+    def _ensure_curated_repair_features(self) -> None:
+        if not self._admin_dataset_path.exists():
+            return
+
+        payload = json.loads(self._admin_dataset_path.read_text(encoding="utf-8"))
+        admin_by_level = payload.setdefault("admin_by_level", {})
+        level7 = admin_by_level.setdefault("7", [])
+        if not isinstance(level7, list):
+            raise ValueError("Invalid Taiwan admin dataset: admin_by_level['7'] must be a list")
+
+        existing_index = next(
+            (
+                idx
+                for idx, row in enumerate(level7)
+                if isinstance(row, dict)
+                and row.get("id") == QIJIN_DISTRICT_REPAIR_FEATURE["id"]
+            ),
+            None,
+        )
+        if existing_index is not None and level7[existing_index] == QIJIN_DISTRICT_REPAIR_FEATURE:
+            return
+
+        if existing_index is None:
+            level7.append(QIJIN_DISTRICT_REPAIR_FEATURE)
+        else:
+            level7[existing_index] = QIJIN_DISTRICT_REPAIR_FEATURE
+
+        self._admin_dataset_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        for path in (
+            self._ffsf_dataset_path,
+            self._ffsf_meta_path,
+            self._runtime_geometry_path,
+            self._runtime_geometry_meta_path,
+            self._runtime_hierarchy_path,
+        ):
+            if path.exists():
+                path.unlink()
 
     def _release_dataset_paths(self) -> list[Path]:
         paths = []
