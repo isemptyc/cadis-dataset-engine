@@ -16,16 +16,45 @@ from ffsf.semantic_dataset_exporter import export_admin_semantic_dataset
 
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "china"
 
-# Level-4 units whose own OSM ring cannot assemble from the source extract, and are
-# therefore materialized from the land subareas OSM declares for them. The derivation is
-# skipped automatically once a source snapshot lets the relation assemble on its own.
-CN_DERIVED_ADMIN_FEATURES = (
+# Prefecture-level units that fail to assemble for the same reason their province does:
+# their rings depend on Taiwan Strait maritime ways, or on Tibet's disputed border ways,
+# which no published extract carries. Materializing them keeps level 5 present in the
+# hierarchy instead of jumping straight from province to district. These are listed before
+# the provinces below so their counties attach to them rather than to the province.
+_CN_DERIVED_PREFECTURES = (
+    (3263977, "Fuzhou"), (3242930, "Xiamen"), (2666969, "Quanzhou"), (3242122, "Zhangzhou"),
+    (3276849, "Putian"), (3277236, "Ningde"), (19021056, "Pingtan"), (2744623, "Shigatse"),
+)
+
+# Units whose own OSM ring cannot assemble from the source extract, and are therefore
+# materialized from the land subareas OSM declares for them. Each derivation is skipped
+# automatically once a source snapshot lets that relation assemble on its own.
+CN_DERIVED_ADMIN_FEATURES = tuple(
+    {
+        "relation_id": relation_id,
+        "id": f"cn_r{relation_id}",
+        "osm_id": f"r{relation_id}",
+        "level": 5,
+        "expected_iso3166_2": None,
+        "subarea_depth": 1,
+        "excluded_subarea_relation_ids": (),
+        # A prefecture whose own subareas all fail is left absent rather than failing the
+        # build; the province still covers the area through the levels that did assemble.
+        "required": False,
+        "derivation_note": (
+            f"{name}'s own ring depends on member ways absent from the source, so the prefecture is "
+            "materialized as the union of its declared OSM county-level subareas."
+        ),
+    }
+    for relation_id, name in _CN_DERIVED_PREFECTURES
+) + (
     {
         "relation_id": 2128285,
         "id": "cn_r2128285",
         "osm_id": "r2128285",
         "level": 4,
         "expected_iso3166_2": "CN-HI",
+        "subarea_depth": 1,
         "excluded_subarea_relation_ids": (2833102,),
         "derivation_note": (
             "Hainan's own level-4 ring is the South China Sea maritime territorial boundary, whose ways lie "
@@ -33,6 +62,38 @@ CN_DERIVED_ADMIN_FEATURES = (
             "materialized as the union of its declared OSM land subareas. Sansha (r2833102) is excluded by "
             "declaration: it administers the Paracel, Spratly and Zhongsha groups roughly 800-1200 km "
             "offshore, outside this dataset's land scope."
+        ),
+    },
+    {
+        "relation_id": 553303,
+        "id": "cn_r553303",
+        "osm_id": "r553303",
+        "level": 4,
+        "expected_iso3166_2": "CN-FJ",
+        "subarea_depth": 2,
+        "excluded_subarea_relation_ids": (),
+        "derivation_note": (
+            "Fujian's own level-4 ring depends on Kinmen/Matsu restricted-water and coastline ways that are "
+            "absent from the source, and its seven coastal prefectures fail for the same reason. The province "
+            "is materialized from two levels of declared OSM subareas, which reaches the county level where "
+            "most units assemble. Kinmen and Matsu are not declared subareas of any Fujian prefecture, so no "
+            "Taiwan-administered territory enters through this derivation. Ten Taiwan-Strait-facing counties "
+            "still do not assemble and remain uncovered."
+        ),
+    },
+    {
+        "relation_id": 153292,
+        "id": "cn_r153292",
+        "osm_id": "r153292",
+        "level": 4,
+        "expected_iso3166_2": "CN-XZ",
+        "subarea_depth": 2,
+        "excluded_subarea_relation_ids": (),
+        "derivation_note": (
+            "Tibet's own level-4 ring depends on disputed border ways absent from the source, and Shigatse "
+            "prefecture fails for the same reason. The region is materialized from two levels of declared "
+            "OSM subareas, which reaches the county level beneath Shigatse. This replaces the previous "
+            "arrangement in which Tibet had no level-4 polygon and resolved only through level-5/6 anchors."
         ),
     },
 )
@@ -190,7 +251,12 @@ class ChinaAdminEngine(BrazilAdminEngine):
         )
 
     def _read_declared_subareas(self, *, osm_pbf_path: str, spec: dict) -> tuple[set[int], dict]:
-        """Read a declared level-4 unit's subarea membership and tags from the source extracts."""
+        """Read a declared level-4 unit's subarea subtree and tags from the source extracts.
+
+        Descends `subarea_depth` levels: a unit's immediate subareas can fail to assemble
+        for the same reason the unit itself does, while their own children still assemble.
+        Excluded relations are dropped together with everything beneath them.
+        """
         import osmium
 
         relation_id = spec["relation_id"]
@@ -199,27 +265,36 @@ class ChinaAdminEngine(BrazilAdminEngine):
         class SubareaReader(osmium.SimpleHandler):
             def __init__(self):
                 super().__init__()
-                self.children: set[int] = set()
+                self.subareas: dict[int, set[int]] = {}
                 self.tags: dict | None = None
 
             def relation(self, relation):
-                if relation.id != relation_id:
-                    return
-                self.tags = dict(relation.tags)
-                for member in relation.members:
-                    if member.type == "r" and member.role == "subarea" and member.ref not in excluded:
-                        self.children.add(member.ref)
+                if relation.id == relation_id:
+                    self.tags = dict(relation.tags)
+                members = {m.ref for m in relation.members if m.type == "r" and m.role == "subarea"}
+                if members:
+                    self.subareas[relation.id] = members
 
         for source_path in self._source_input_paths(osm_pbf_path):
             reader = SubareaReader()
             reader.apply_file(str(source_path))
             if reader.tags is None:
                 continue
+            collected: set[int] = set()
+            frontier = {relation_id}
+            for _ in range(spec.get("subarea_depth", 1)):
+                frontier = {ref for parent in frontier for ref in reader.subareas.get(parent, ())} - excluded - collected
+                if not frontier:
+                    break
+                collected |= frontier
+            reader.children = collected
             expected = {
                 "boundary": "administrative",
                 "admin_level": str(spec["level"]),
-                "ISO3166-2": spec["expected_iso3166_2"],
             }
+            # Prefecture-level units carry no ISO3166-2 tag; the relation id is the identity.
+            if spec.get("expected_iso3166_2"):
+                expected["ISO3166-2"] = spec["expected_iso3166_2"]
             for key, value in expected.items():
                 if reader.tags.get(key) != value:
                     raise RuntimeError(
@@ -259,6 +334,12 @@ class ChinaAdminEngine(BrazilAdminEngine):
                 if isinstance(row, dict) and row.get("osm_id") in child_osm_ids and row.get("geometry")
             ]
             if not contributing:
+                if not spec.get("required", True):
+                    # Every declared subarea failed for the same source reason the unit did.
+                    # Leave the level absent rather than failing the build; the release
+                    # evaluation records it as a coverage gap.
+                    print(f"Derived feature {spec['id']}: no declared subarea assembled; skipped")
+                    continue
                 raise RuntimeError(
                     f"Derived feature {spec['id']}: no declared subarea survived extraction and scope filtering"
                 )
