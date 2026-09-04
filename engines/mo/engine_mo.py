@@ -10,9 +10,14 @@ DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "macau"
 
 MO_PROFILE = AdminProfile(
     name_keys=("name:en", "name", "official_name", "name:mo", "name:ru"),
+    # Tolerances are scaled to the territory. Macau is about 33 km2 and its parishes run
+    # under 1 km across, so the defaults used for large countries -- 0.002 and 0.001
+    # degrees, roughly 220 m and 110 m -- displaced parish boundaries far enough to push
+    # Senado Square outside every polygon. At these values all sampled landmarks stay
+    # inside their parish and the total area change is under 0.01 km2.
     level_policies={
-        5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.002, fix_invalid=True, parent_resolution="strict"),
-        6: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
+        5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.0002, fix_invalid=True, parent_resolution="strict"),
+        6: AdminLevelPolicy(simplify=True, simplify_tolerance=0.0001, fix_invalid=True, parent_resolution="strict"),
     },
     parent_fallback=False,
     multilingual_names_enabled=True,
