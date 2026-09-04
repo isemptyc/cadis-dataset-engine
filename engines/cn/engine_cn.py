@@ -3,12 +3,39 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-from dataset import AdminLevelPolicy, AdminProfile, build_admin_dataset
+from dataset import (
+    AdminLevelPolicy,
+    AdminProfile,
+    build_admin_dataset,
+    _extract_multilingual_names,
+    _pick_name,
+)
 from engines.br.engine_br import BrazilAdminEngine
 from ffsf import export_cadis_to_ffsf
 from ffsf.semantic_dataset_exporter import export_admin_semantic_dataset
 
 DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "china"
+
+# Level-4 units whose own OSM ring cannot assemble from the source extract, and are
+# therefore materialized from the land subareas OSM declares for them. The derivation is
+# skipped automatically once a source snapshot lets the relation assemble on its own.
+CN_DERIVED_ADMIN_FEATURES = (
+    {
+        "relation_id": 2128285,
+        "id": "cn_r2128285",
+        "osm_id": "r2128285",
+        "level": 4,
+        "expected_iso3166_2": "CN-HI",
+        "excluded_subarea_relation_ids": (2833102,),
+        "derivation_note": (
+            "Hainan's own level-4 ring is the South China Sea maritime territorial boundary, whose ways lie "
+            "outside every Geofabrik extract clip polygon and are absent from the source. The province is "
+            "materialized as the union of its declared OSM land subareas. Sansha (r2833102) is excluded by "
+            "declaration: it administers the Paracel, Spratly and Zhongsha groups roughly 800-1200 km "
+            "offshore, outside this dataset's land scope."
+        ),
+    },
+)
 
 CN_PROFILE = AdminProfile(
     name_keys=("name:en", "name", "official_name", "name:zh", "name:bo", "name:ru"),
@@ -162,9 +189,142 @@ class ChinaAdminEngine(BrazilAdminEngine):
             encoding="utf-8",
         )
 
+    def _read_declared_subareas(self, *, osm_pbf_path: str, spec: dict) -> tuple[set[int], dict]:
+        """Read a declared level-4 unit's subarea membership and tags from the source extracts."""
+        import osmium
+
+        relation_id = spec["relation_id"]
+        excluded = set(spec["excluded_subarea_relation_ids"])
+
+        class SubareaReader(osmium.SimpleHandler):
+            def __init__(self):
+                super().__init__()
+                self.children: set[int] = set()
+                self.tags: dict | None = None
+
+            def relation(self, relation):
+                if relation.id != relation_id:
+                    return
+                self.tags = dict(relation.tags)
+                for member in relation.members:
+                    if member.type == "r" and member.role == "subarea" and member.ref not in excluded:
+                        self.children.add(member.ref)
+
+        for source_path in self._source_input_paths(osm_pbf_path):
+            reader = SubareaReader()
+            reader.apply_file(str(source_path))
+            if reader.tags is None:
+                continue
+            expected = {
+                "boundary": "administrative",
+                "admin_level": str(spec["level"]),
+                "ISO3166-2": spec["expected_iso3166_2"],
+            }
+            for key, value in expected.items():
+                if reader.tags.get(key) != value:
+                    raise RuntimeError(
+                        f"Derived feature r{relation_id}: expected {key}={value!r}, got {reader.tags.get(key)!r}"
+                    )
+            if not reader.children:
+                raise RuntimeError(f"Derived feature r{relation_id}: no declared subarea children in source")
+            return reader.children, reader.tags
+        raise RuntimeError(f"Derived feature r{relation_id}: relation not found in any China source component")
+
+    def _ensure_derived_admin_features(self, *, osm_pbf_path: str) -> None:
+        """Materialize declared level-4 units whose own ring cannot assemble from the source."""
+        if not self._admin_dataset_path.exists():
+            return
+
+        from shapely.geometry import mapping, shape
+        from shapely.ops import unary_union
+
+        payload = json.loads(self._admin_dataset_path.read_text(encoding="utf-8"))
+        admin_by_level = payload.setdefault("admin_by_level", {})
+        changed = False
+
+        for spec in CN_DERIVED_ADMIN_FEATURES:
+            level_rows = admin_by_level.setdefault(str(spec["level"]), [])
+            if not isinstance(level_rows, list):
+                raise ValueError(f"Invalid China admin dataset: admin_by_level['{spec['level']}'] must be a list")
+            if any(isinstance(row, dict) and row.get("id") == spec["id"] for row in level_rows):
+                # The source assembled this unit on its own; no derivation needed.
+                continue
+
+            children, relation_tags = self._read_declared_subareas(osm_pbf_path=osm_pbf_path, spec=spec)
+            child_osm_ids = {f"r{ref}" for ref in children}
+            contributing = [
+                row
+                for level in self.LEVELS
+                for row in admin_by_level.get(str(level), [])
+                if isinstance(row, dict) and row.get("osm_id") in child_osm_ids and row.get("geometry")
+            ]
+            if not contributing:
+                raise RuntimeError(
+                    f"Derived feature {spec['id']}: no declared subarea survived extraction and scope filtering"
+                )
+
+            geom = unary_union([shape(row["geometry"]) for row in contributing])
+            policy = CN_PROFILE.level_policies[spec["level"]]
+            if policy.simplify:
+                geom = geom.simplify(policy.simplify_tolerance)
+            if policy.fix_invalid and not geom.is_valid:
+                geom = geom.buffer(0)
+            if geom.is_empty or not geom.is_valid or geom.geom_type not in {"Polygon", "MultiPolygon"}:
+                raise RuntimeError(f"Derived feature {spec['id']}: unusable derived geometry")
+
+            level_rows.append(
+                {
+                    "id": spec["id"],
+                    "osm_id": spec["osm_id"],
+                    "name": _pick_name(relation_tags, CN_PROFILE.name_keys),
+                    "names": _extract_multilingual_names(relation_tags, CN_PROFILE),
+                    "level": spec["level"],
+                    "bbox": list(geom.bounds),
+                    "parent": None,
+                    "geometry": mapping(geom),
+                    "source": "derived_from_subareas",
+                    "derivation": {
+                        "method": "union_of_declared_subareas",
+                        "declared_subarea_count": len(children),
+                        "contributing_subarea_count": len(contributing),
+                        "excluded_subarea_relation_ids": [f"r{ref}" for ref in spec["excluded_subarea_relation_ids"]],
+                        "note": spec["derivation_note"],
+                    },
+                }
+            )
+            # Direct subareas are never parented by spatial inference, which only pairs
+            # adjacent levels; attach the ones this unit was derived from.
+            for row in contributing:
+                if not row.get("parent"):
+                    row["parent"] = spec["id"]
+            changed = True
+
+        if not changed:
+            return
+
+        label_rows = payload.get("admin_region")
+        if isinstance(label_rows, list):
+            payload["admin_region"] = list(admin_by_level.get("4", []))
+        self._admin_dataset_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        for path in (
+            self._ffsf_dataset_path,
+            self._ffsf_meta_path,
+            self._semantic_dataset_path,
+            self._admin_hierarchy_path,
+            self._runtime_geometry_path,
+            self._runtime_geometry_meta_path,
+            self._runtime_hierarchy_path,
+        ):
+            if path.exists():
+                path.unlink()
+
     def _ensure_datasets(self, osm_pbf_path: str) -> None:
         if not self._admin_dataset_path.exists():
             self._build_admin_dataset(osm_pbf_path=osm_pbf_path)
+        self._ensure_derived_admin_features(osm_pbf_path=osm_pbf_path)
         if not self._admin_hierarchy_path.exists():
             self._write_dataset_scoped_hierarchy_artifacts()
         if not self._ffsf_dataset_path.exists() or not self._ffsf_meta_path.exists():
