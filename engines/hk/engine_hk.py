@@ -11,7 +11,6 @@ DEFAULT_WORK_DIR = Path.home() / ".cache" / "cadis_dataset_engine" / "hongkong"
 HK_PROFILE = AdminProfile(
     name_keys=("name:en", "name", "official_name", "name:hk", "name:ru"),
     level_policies={
-        3: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         4: AdminLevelPolicy(simplify=True, simplify_tolerance=0.01, fix_invalid=True, parent_resolution="strict"),
         5: AdminLevelPolicy(simplify=True, simplify_tolerance=0.002, fix_invalid=True, parent_resolution="strict"),
         6: AdminLevelPolicy(simplify=True, simplify_tolerance=0.001, fix_invalid=True, parent_resolution="strict"),
@@ -34,8 +33,8 @@ class HongKongAdminEngine(BrazilAdminEngine):
     VERSION = "v1.0"
     NAME_SCHEMA = "multilingual_v1"
 
-    LEVELS = [3, 4, 5, 6, 7, 8, 9]
-    ALLOWED_SHAPES = _all_nonempty_level_shapes((3, 4, 5, 6, 7, 8, 9,))
+    LEVELS = [4, 5, 6, 7, 8, 9]
+    ALLOWED_SHAPES = _all_nonempty_level_shapes((4, 5, 6, 7, 8, 9,))
 
     COUNTRY_ISO = "HK"
     COUNTRY_NAME = "Hong Kong"
@@ -68,7 +67,6 @@ class HongKongAdminEngine(BrazilAdminEngine):
                 country_code=self.COUNTRY_ISO,
                 country_name=self.COUNTRY_NAME,
                 level_labels={
-                    3: "admin_region",
                     4: "admin_region",
                     5: "admin_district",
                     6: "admin_municipality",
@@ -93,11 +91,11 @@ class HongKongAdminEngine(BrazilAdminEngine):
         allowed_shapes = [list(shape) for shape in sorted(self.ALLOWED_SHAPES)]
         return {
             "runtime_policy_version": self.RUNTIME_POLICY_VERSION,
-            "allowed_levels": [3, 4, 5, 6, 7, 8, 9],
+            "allowed_levels": [4, 5, 6, 7, 8, 9],
             "allowed_shapes": allowed_shapes,
-            "shape_status": [{"levels": shape, "status": "ok" if 3 in shape else "partial"} for shape in allowed_shapes],
+            "shape_status": [{"levels": shape, "status": "ok" if 4 in shape else "partial"} for shape in allowed_shapes],
             "layers": {"hierarchy_required": True, "repair_required": False},
-            "hierarchy_repair_rules": {"parent_level": 3, "child_levels": [level for level in [3, 4, 5, 6, 7, 8, 9] if level != 3]},
-            "repair_rules": {"parent_level": 3, "child_levels": []},
+            "hierarchy_repair_rules": {"parent_level": 4, "child_levels": [level for level in [4, 5, 6, 7, 8, 9] if level != 4]},
+            "repair_rules": {"parent_level": 4, "child_levels": []},
             "nearby_policy": {"enabled": True, "max_distance_km": 2.0, "offshore_max_distance_km": 20.0},
         }
