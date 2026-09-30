@@ -52,31 +52,24 @@ class DeriveProfileTests(unittest.TestCase):
         # Region R (level 4) covers x 0..10; county A (level 6) inside it;
         # districts: D inside R (dropped) and G outside every level-4
         # polygon (a gap filler, repaired to the polygon-less region Q).
-        features = [
+        self.features = [
             ("xx_r1", 4, "R", None, _square(0, 0, 10, 10), True),
             ("xx_a1", 6, "A", "xx_r1", _square(1, 1, 5, 5), True),
             ("xx_d1", 8, "D", "xx_a1", _square(2, 2, 3, 3), True),
             ("xx_g1", 8, "G", "xx_x1", _square(20, 20, 22, 22), True),
+            # A parentless level-6 unit inside R (common in real releases).
+            ("xx_o1", 6, "O", None, _square(6, 6, 8, 8), True),
         ]
-        (self.source / "geometry.ffsf").write_bytes(_ffsf([f[4] for f in features]))
-        meta = [
-            {
-                "feature_id": fid, "level": level, "name": name, "names": {"en": name},
-                "parent_id": parent, "representative_point_exact": [ring[0][0] + 0.5, ring[0][1] + 0.5],
-                "country_scope_flag": flag,
-            }
-            for fid, level, name, parent, ring, flag in features
-        ]
-        (self.source / "geometry_meta.json").write_text(json.dumps(meta))
-        nodes = [
+        self.nodes = [
             {"id": "r1", "level": 4, "name": "R", "names": {}, "parent_id": None},
             {"id": "q1", "level": 4, "name": "Q", "names": {}, "parent_id": None},
             {"id": "a1", "level": 6, "name": "A", "names": {}, "parent_id": "r1"},
             {"id": "x1", "level": 6, "name": "X", "names": {}, "parent_id": "q1"},
             {"id": "d1", "level": 8, "name": "D", "names": {}, "parent_id": "a1"},
             {"id": "g1", "level": 8, "name": "G", "names": {}, "parent_id": "x1"},
+            {"id": "o1", "level": 6, "name": "O", "names": {}, "parent_id": None},
         ]
-        (self.source / "hierarchy.json").write_text(json.dumps({"nodes": nodes}))
+        self._write_geography()
         policy = {
             "allowed_levels": [4, 6, 8],
             "allowed_shapes": [[4], [4, 6], [4, 6, 8], [4, 8], [8]],
@@ -96,6 +89,19 @@ class DeriveProfileTests(unittest.TestCase):
             "checksums": {"files": {}},
         }).encode()
         (self.source / "dataset_release_manifest.json").write_bytes(self.manifest)
+
+    def _write_geography(self) -> None:
+        (self.source / "geometry.ffsf").write_bytes(_ffsf([f[4] for f in self.features]))
+        meta = [
+            {
+                "feature_id": fid, "level": level, "name": name, "names": {"en": name},
+                "parent_id": parent, "representative_point_exact": [ring[0][0] + 0.5, ring[0][1] + 0.5],
+                "country_scope_flag": flag,
+            }
+            for fid, level, name, parent, ring, flag in self.features
+        ]
+        (self.source / "geometry_meta.json").write_text(json.dumps(meta))
+        (self.source / "hierarchy.json").write_text(json.dumps({"nodes": self.nodes}))
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
@@ -157,10 +163,52 @@ class DeriveProfileTests(unittest.TestCase):
         self.assertEqual(summary["manifest_sha256"], hashlib.sha256(manifest_bytes).hexdigest())
         profile = manifest["derived_profile"]
         self.assertEqual(profile["requested_levels"], [4])
+        self.assertEqual(profile["inferred_parents"]["source"], "inferred_containment")
         self.assertEqual(profile["source"]["manifest_sha256"], hashlib.sha256(self.manifest).hexdigest())
         for name, entry in manifest["checksums"]["files"].items():
             data = (self.output / name).read_bytes()
             self.assertEqual(entry, {"sha256": hashlib.sha256(data).hexdigest(), "size": len(data)})
+
+    def test_parentless_retained_unit_gets_its_containing_parent(self) -> None:
+        summary = self.derive({4, 6})
+        meta = {m["feature_id"]: m for m in json.loads((self.output / "geometry_meta.json").read_text())}
+        nodes = {n["id"]: n for n in json.loads((self.output / "hierarchy.json").read_text())["nodes"]}
+        # O had no parent; its representative point lies in R. The inferred
+        # parent is marked so it stays distinct from a recorded one.
+        self.assertEqual(meta["xx_o1"]["parent_id"], "xx_r1")
+        self.assertEqual(nodes["o1"]["parent_id"], "r1")
+        self.assertEqual(meta["xx_o1"]["parent_source"], "inferred_containment")
+        self.assertEqual(nodes["o1"]["parent_source"], "inferred_containment")
+        # A recorded parent is never replaced and carries no inference mark.
+        self.assertEqual(meta["xx_a1"]["parent_id"], "xx_r1")
+        self.assertEqual(nodes["a1"]["parent_id"], "r1")
+        self.assertNotIn("parent_source", meta["xx_a1"])
+        self.assertNotIn("parent_source", nodes["a1"])
+        self.assertEqual(summary["spatial_parents"], 1)
+        self.assertEqual(summary["inferred_parents"], {"assigned": 1, "ambiguous": 0, "no_container": 0})
+
+    def test_ambiguous_or_missing_container_leaves_ancestry_unknown(self) -> None:
+        # S overlaps R at x/y 8..10; M's representative point (9, 9) lies in
+        # both, and N lies outside every level-4 unit.
+        self.features += [
+            ("xx_s1", 4, "S", None, _square(8, 8, 14, 14), True),
+            ("xx_m1", 6, "M", None, _square(8.5, 8.5, 9.5, 9.5), True),
+            ("xx_n1", 6, "N", None, _square(30, 30, 32, 32), True),
+        ]
+        self.nodes += [
+            {"id": "s1", "level": 4, "name": "S", "names": {}, "parent_id": None},
+            {"id": "m1", "level": 6, "name": "M", "names": {}, "parent_id": None},
+            {"id": "n1", "level": 6, "name": "N", "names": {}, "parent_id": None},
+        ]
+        self._write_geography()
+        summary = self.derive({4, 6})
+        meta = {m["feature_id"]: m for m in json.loads((self.output / "geometry_meta.json").read_text())}
+        nodes = {n["id"]: n for n in json.loads((self.output / "hierarchy.json").read_text())["nodes"]}
+        for fid, nid in (("xx_m1", "m1"), ("xx_n1", "n1")):
+            self.assertIsNone(meta[fid]["parent_id"])
+            self.assertIsNone(nodes[nid]["parent_id"])
+            self.assertNotIn("parent_source", meta[fid])
+        self.assertEqual(summary["inferred_parents"], {"assigned": 1, "ambiguous": 1, "no_container": 1})
 
     def test_derivation_is_deterministic(self) -> None:
         first = self.derive({4})["manifest_sha256"]

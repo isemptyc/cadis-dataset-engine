@@ -26,7 +26,12 @@ The derivation rewrites, consistently:
 - geometry_meta.json: retained features in FFSF order, each parent_id pointing
   at its nearest retained ancestor;
 - hierarchy.json: retained nodes with parents re-linked the same way, and
-  branch identity recomputed when the release carries it;
+  branch identity recomputed when the release carries it. A retained feature
+  with no ancestor at a coarser retained level (many releases leave lower
+  units parentless) gets the retained coarser feature containing its
+  representative point as its parent, so consumers can tell which parent a
+  unit belongs to (a Leningrad Oblast district is not under Saint
+  Petersburg even where boundary polygons overlap);
 - runtime_policy.json: allowed levels and shapes projected onto the retained
   levels (a projected shape is "ok" when any source shape projecting to it is
   "ok"), and hierarchy repair kept only while its parent level is retained;
@@ -50,6 +55,9 @@ DERIVED_PROFILE_SCHEMA = "cadis.derived-profile/1"
 # Degrees; about 30 m. Shared boundaries are quantized per part, so levels
 # disagree by a few meters along every border.
 DEFAULT_GAP_TOLERANCE = 3e-4
+# Marks a parent inferred by representative-point containment, never
+# recorded in the source release (geometry_meta.json and hierarchy.json).
+PARENT_SOURCE_INFERRED = "inferred_containment"
 RUNTIME_FILES = ("geometry.ffsf", "geometry_meta.json", "hierarchy.json", "runtime_policy.json")
 
 
@@ -199,6 +207,84 @@ def gap_fillers(
     return [i for i, is_covered in zip(candidates, covered) if not is_covered]
 
 
+def spatial_parents(
+    ffsf: dict[str, Any],
+    meta: list[dict[str, Any]],
+    keep: list[int],
+    hierarchy_nodes: list[dict[str, Any]],
+    retained: set[int],
+    prefix: str,
+) -> dict[str, str]:
+    """Inferred parents for retained features with no recorded ancestor at any
+    coarser retained level.
+
+    Rule: take the finest coarser retained level that has any polygon
+    containing the feature's representative point. Exactly one containing
+    unit becomes the parent. Two or more (overlapping candidates) is
+    ambiguous: nothing is assigned and coarser levels are not tried, so an
+    overlap never resolves to an arbitrary unit. No containing unit at any
+    level leaves the ancestry unknown.
+
+    Representative-point containment is a practical inference, not proof of
+    administrative membership; the written parents are marked
+    `parent_source: "inferred_containment"` so they stay distinguishable from
+    source-recorded parents. Returns (parents by feature id, counts)."""
+    import shapely
+    from shapely.geometry import Point
+
+    parents = {n["id"]: n.get("parent_id") for n in hierarchy_nodes}
+    levels = {n["id"]: n["level"] for n in hierarchy_nodes}
+    parents.update({m["feature_id"]: m.get("parent_id") for m in meta})
+    levels.update({m["feature_id"]: m["level"] for m in meta})
+    ancestry = _Ancestry(parents, levels, prefix)
+    kept = set(keep)
+    coarsest = min(retained)
+    containers: dict[int, tuple[list[int], Any]] = {}
+    for level in sorted(retained):
+        indices = [i for i in kept if meta[i]["level"] == level]
+        if indices:
+            geometries = [feature_geometry(ffsf, i) for i in indices]
+            containers[level] = (indices, shapely.STRtree(geometries), geometries)
+
+    out: dict[str, str] = {}
+    counts = {"assigned": 0, "ambiguous": 0, "no_container": 0}
+    for i in sorted(kept):
+        entry = meta[i]
+        level = entry["level"]
+        if level not in retained or level == coarsest:
+            continue
+        coarser = {l for l in retained if l < level}
+        # Any recorded ancestor at a coarser retained level settles it.
+        seen: set[str] = set()
+        current = ancestry.canonical(entry.get("parent_id"))
+        has_ancestor = False
+        while current is not None and current not in seen:
+            seen.add(current)
+            if ancestry.levels.get(current) in coarser:
+                has_ancestor = True
+                break
+            current = ancestry.canonical(ancestry.parents.get(current))
+        if has_ancestor:
+            continue
+        lon, lat = entry["representative_point_exact"]
+        point = Point(lon, lat)
+        outcome = "no_container"
+        for parent_level in sorted(coarser, reverse=True):
+            if parent_level not in containers:
+                continue
+            indices, tree, geometries = containers[parent_level]
+            hits = [indices[j] for j in tree.query(point) if geometries[j].contains(point)]
+            if len(hits) == 1:
+                out[entry["feature_id"]] = meta[hits[0]]["feature_id"]
+                outcome = "assigned"
+                break
+            if len(hits) > 1:
+                outcome = "ambiguous"
+                break
+        counts[outcome] += 1
+    return out, counts
+
+
 # MARK: - Levels and parents
 
 
@@ -250,7 +336,7 @@ class _Ancestry:
 
 def derive_meta(
     meta: list[dict[str, Any]], keep: list[int], hierarchy_nodes: list[dict[str, Any]],
-    retained: set[int], prefix: str,
+    retained: set[int], prefix: str, overrides: dict[str, str] | None = None,
 ) -> list[dict]:
     # Parents may be hierarchy-only nodes (no polygon), so walk the union.
     parents = {n["id"]: n.get("parent_id") for n in hierarchy_nodes}
@@ -266,12 +352,16 @@ def derive_meta(
         entry = dict(meta[i])
         if entry.get("parent_id") is not None:
             entry["parent_id"] = ancestry.nearest_kept(entry["parent_id"], kept_ids)
+        if overrides and entry["feature_id"] in overrides:
+            entry["parent_id"] = overrides[entry["feature_id"]]
+            entry["parent_source"] = PARENT_SOURCE_INFERRED
         out.append(entry)
     return out
 
 
 def derive_hierarchy(
-    hierarchy: dict[str, Any], kept_ids: set[str], retained: set[int], prefix: str
+    hierarchy: dict[str, Any], kept_ids: set[str], retained: set[int], prefix: str,
+    overrides: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     nodes = hierarchy["nodes"]
     ancestry = _Ancestry(
@@ -290,6 +380,17 @@ def derive_hierarchy(
             continue
         entry = {key: node[key] for key in core if key in node}
         entry["parent_id"] = ancestry.nearest_kept(node.get("parent_id"), kept_ids)
+        if overrides:
+            node_id = node["id"]
+            override = overrides.get(node_id) or overrides.get(prefix + node_id)
+            if override is not None:
+                # Written in this graph's id form.
+                entry["parent_id"] = (
+                    override[len(prefix):]
+                    if override.startswith(prefix) and not node_id.startswith(prefix)
+                    else override
+                )
+                entry["parent_source"] = PARENT_SOURCE_INFERRED
         derived_nodes.append(entry)
     if "branch_identity_version" in hierarchy:
         return _load_runtime_hierarchy().build_runtime_hierarchy_payload(derived_nodes)
@@ -368,10 +469,15 @@ def derive_profile(
     runtime_levels = retained | {meta[i]["level"] for i in fillers}
 
     hierarchy = json.loads((source_dir / "hierarchy.json").read_text(encoding="utf-8"))
+    overrides, parent_counts = spatial_parents(ffsf, meta, keep, hierarchy["nodes"], retained, prefix)
     files = {
         "geometry.ffsf": subset_ffsf(ffsf, keep),
-        "geometry_meta.json": _dump_json(derive_meta(meta, keep, hierarchy["nodes"], retained, prefix)),
-        "hierarchy.json": _dump_json(derive_hierarchy(hierarchy, kept_ids, retained, prefix)),
+        "geometry_meta.json": _dump_json(
+            derive_meta(meta, keep, hierarchy["nodes"], retained, prefix, overrides)
+        ),
+        "hierarchy.json": _dump_json(
+            derive_hierarchy(hierarchy, kept_ids, retained, prefix, overrides)
+        ),
         "runtime_policy.json": _dump_json(derive_policy(policy, runtime_levels)),
     }
 
@@ -391,6 +497,11 @@ def derive_profile(
         "retained_levels": sorted(retained),
         "gap_filler_features": len(fillers),
         "gap_tolerance_degrees": tolerance,
+        "inferred_parents": {
+            "source": PARENT_SOURCE_INFERRED,
+            "rule": "representative point in exactly one unit at the finest coarser retained level",
+            **parent_counts,
+        },
         "source": {
             "dataset_id": manifest["dataset_id"],
             "dataset_version": manifest["dataset_version"],
@@ -410,6 +521,8 @@ def derive_profile(
         "manifest_sha256": _sha256_bytes(manifest_out),
         "retained_levels": sorted(retained),
         "gap_filler_features": len(fillers),
+        "spatial_parents": len(overrides),
+        "inferred_parents": parent_counts,
         "feature_count": len(keep),
         "source_feature_count": len(meta),
         "bytes": sum(len(data) for data in files.values()) + len(manifest_out),
