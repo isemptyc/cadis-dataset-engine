@@ -47,6 +47,7 @@ import hashlib
 import importlib.util
 import json
 import struct
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,44 @@ def _sha256_bytes(data: bytes) -> str:
 
 def _dump_json(value: Any) -> bytes:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+
+
+# MARK: - Engine identity
+
+# Source files whose code determines a derived profile's bytes.
+DERIVATION_SOURCES = ("derive_profile.py", "ffsf/runtime_hierarchy.py")
+
+
+def derivation_code_sha256() -> str:
+    """Hash of the derivation code. Recorded in every profile manifest: it
+    changes only when the derivation itself changes, unlike the commit."""
+    digest = hashlib.sha256()
+    for name in DERIVATION_SOURCES:
+        digest.update(name.encode("utf-8") + b"\0")
+        digest.update((HERE / name).read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def engine_identity() -> dict[str, Any]:
+    """The engine checkout that derived a profile: its commit, whether the
+    derivation sources had uncommitted changes, and the derivation code hash.
+    Commit and dirty are None outside a git checkout."""
+    def git(*args: str) -> str | None:
+        try:
+            return subprocess.run(
+                ["git", "-C", str(HERE), *args], check=True, capture_output=True, text=True
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            return None
+
+    commit = git("rev-parse", "HEAD")
+    status = git("status", "--porcelain", "--", *DERIVATION_SOURCES)
+    return {
+        "commit": commit,
+        "dirty": None if status is None else bool(status),
+        "derivation_code_sha256": derivation_code_sha256(),
+    }
 
 
 # MARK: - FFSF
@@ -489,10 +528,12 @@ def derive_profile(
             for name, data in sorted(files.items())
         }
     }
+    code_sha256 = derivation_code_sha256()
     derived_manifest["derived_profile"] = {
         "schema": DERIVED_PROFILE_SCHEMA,
         "profile": profile,
         "revision": revision,
+        "derivation_code_sha256": code_sha256,
         "requested_levels": sorted(levels),
         "retained_levels": sorted(retained),
         "gap_filler_features": len(fillers),
@@ -520,6 +561,7 @@ def derive_profile(
         "dataset_version": derived_manifest["dataset_version"],
         "manifest_sha256": _sha256_bytes(manifest_out),
         "retained_levels": sorted(retained),
+        "derivation_code_sha256": code_sha256,
         "gap_filler_features": len(fillers),
         "spatial_parents": len(overrides),
         "inferred_parents": parent_counts,
@@ -541,7 +583,7 @@ def main() -> int:
     summary = derive_profile(
         args.source, args.output, levels=levels, profile=args.profile, revision=args.revision
     )
-    print(json.dumps(summary, ensure_ascii=False))
+    print(json.dumps({**summary, "engine": engine_identity()}, ensure_ascii=False))
     return 0
 
 

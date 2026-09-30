@@ -164,6 +164,11 @@ class DeriveProfileTests(unittest.TestCase):
         profile = manifest["derived_profile"]
         self.assertEqual(profile["requested_levels"], [4])
         self.assertEqual(profile["inferred_parents"]["source"], "inferred_containment")
+        # The manifest names the derivation code, not the commit, so an engine
+        # commit that leaves the derivation unchanged keeps profile bytes.
+        self.assertEqual(profile["derivation_code_sha256"], derive_profile.derivation_code_sha256())
+        self.assertEqual(summary["derivation_code_sha256"], profile["derivation_code_sha256"])
+        self.assertNotIn("commit", profile)
         self.assertEqual(profile["source"]["manifest_sha256"], hashlib.sha256(self.manifest).hexdigest())
         for name, entry in manifest["checksums"]["files"].items():
             data = (self.output / name).read_bytes()
@@ -209,6 +214,12 @@ class DeriveProfileTests(unittest.TestCase):
             self.assertIsNone(nodes[nid]["parent_id"])
             self.assertNotIn("parent_source", meta[fid])
         self.assertEqual(summary["inferred_parents"], {"assigned": 1, "ambiguous": 1, "no_container": 1})
+
+    def test_engine_identity_names_commit_and_code(self) -> None:
+        identity = derive_profile.engine_identity()
+        self.assertEqual(identity["derivation_code_sha256"], derive_profile.derivation_code_sha256())
+        self.assertIn("commit", identity)
+        self.assertIn("dirty", identity)
 
     def test_derivation_is_deterministic(self) -> None:
         first = self.derive({4})["manifest_sha256"]
